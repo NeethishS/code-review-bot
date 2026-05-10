@@ -65,11 +65,15 @@ function App() {
                 .then((r) => r.json())
                 .then((data) => {
                     if (!data.success) {
+                        console.warn('🔄 Session expired or invalid. Logging out.');
                         handleLogout();
+                    } else {
+                        console.log('✅ Session verified.');
                     }
                 })
-                .catch(() => {
-                    // Server might be down — keep token but don't force logout
+                .catch((err) => {
+                    console.error('⚠️ Backend unreachable or network error:', err.message);
+                    // Don't force logout on network error - server might just be sleeping (cold start)
                 });
         }
     }, []);
