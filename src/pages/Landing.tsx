@@ -14,8 +14,8 @@ function Landing({ onGetStarted }: LandingProps) {
                     <span className="logo-text">Code Review Bot</span>
                 </div>
                 <div className="nav-actions">
-                    <button className="btn-text" onClick={onGetStarted}>Sign In</button>
-                    <button className="btn btn-primary btn-sm" onClick={onGetStarted}>Get Started</button>
+                    <button className="btn-text btn-nav-large" onClick={onGetStarted}>Sign In</button>
+                    <button className="btn btn-primary btn-nav-large" onClick={onGetStarted}>Get Started</button>
                 </div>
             </nav>
 
@@ -96,7 +96,7 @@ function Landing({ onGetStarted }: LandingProps) {
             </section>
 
             {/* How It Works Section */}
-            <section className="how-it-works">
+            <section id="how-it-works" className="how-it-works">
                 <div className="section-header">
                     <h2>Simplify your code quality</h2>
                     <p>Three steps to a more reliable codebase.</p>
@@ -164,6 +164,7 @@ function Landing({ onGetStarted }: LandingProps) {
             </section>
 
             <footer className="landing-footer">
+                <div className="footer-spacing-top"></div>
                 <div className="footer-grid">
                     <div className="footer-brand">
                         <div className="landing-logo">

@@ -570,26 +570,50 @@
     }
 }
 
-@media (max-width: 640px) {
+.btn-nav-large {
+    padding: 12px 28px !important;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+.landing-footer {
+    padding: 100px 5% 60px !important; /* Huge spacing boost */
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.5)) !important;
+}
+
+.footer-spacing-top {
+    height: 40px;
+}
+
+/* SMARTPHONE OPTIMIZATION */
+@media (max-width: 480px) {
     .hero-title {
-        font-size: 2.5rem;
+        font-size: 2.2rem !important;
     }
-    .hero-subtitle {
-        font-size: var(--font-size-md);
+    
+    .hero-section {
+        padding-top: 40px !important;
     }
-    .hero-cta {
+
+    .stat-item {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .landing-nav {
         flex-direction: column;
+        gap: var(--spacing-md);
+        padding-top: 20px;
+    }
+
+    .nav-actions {
         width: 100%;
-    }
-    .hero-cta button {
-        width: 100%;
-    }
-    .cta-card h2 {
-        font-size: 1.8rem;
-    }
-    .hero-stats {
-        flex-wrap: wrap;
         justify-content: center;
-        gap: var(--spacing-xl);
+    }
+
+    .footer-grid {
+        gap: 40px !important;
     }
 }
+
