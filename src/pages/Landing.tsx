@@ -11,7 +11,7 @@ function Landing({ onGetStarted }: LandingProps) {
             <nav className="landing-nav">
                 <div className="landing-logo">
                     <span className="logo-icon">🤖</span>
-                    <span className="logo-text">CodeReview AI</span>
+                    <span className="logo-text">Code Review Bot</span>
                 </div>
                 <div className="nav-actions">
                     <button className="btn-text" onClick={onGetStarted}>Sign In</button>
@@ -37,9 +37,9 @@ function Landing({ onGetStarted }: LandingProps) {
                         <button className="btn btn-primary btn-lg" onClick={onGetStarted}>
                             Get Started for Free
                         </button>
-                        <button className="btn btn-ghost btn-lg">
-                            Watch Demo
-                        </button>
+                        <a href="#how-it-works" className="btn btn-ghost btn-lg">
+                            Explore Features
+                        </a>
                     </div>
                     <div className="hero-stats">
                         <div className="stat-item">
@@ -168,32 +168,38 @@ function Landing({ onGetStarted }: LandingProps) {
                     <div className="footer-brand">
                         <div className="landing-logo">
                             <span className="logo-icon">🤖</span>
-                            <span className="logo-text">CodeReview AI</span>
+                            <span className="logo-text">Code Review Bot</span>
                         </div>
-                        <p>The future of automated code quality.</p>
+                        <p>Deploying the future of automated code quality. Built for developers who care about perfect code.</p>
+                        <div className="social-links">
+                            <span>🐦</span>
+                            <span>🐙</span>
+                            <span>💼</span>
+                        </div>
                     </div>
                     <div className="footer-links">
                         <div className="link-col">
                             <h4>Product</h4>
                             <a href="#features">Features</a>
                             <a href="#how-it-works">How it works</a>
-                            <a href="#demo">Demo</a>
+                            <button className="btn-link" onClick={onGetStarted}>Pricing</button>
                         </div>
                         <div className="link-col">
                             <h4>Resources</h4>
-                            <a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
-                            <a href="#">Documentation</a>
-                            <a href="#">API Reference</a>
+                            <a href="https://github.com/NeethishS/code-review-bot" target="_blank" rel="noreferrer">GitHub OSS</a>
+                            <a href="#">Docs</a>
+                            <a href="#">API</a>
                         </div>
                         <div className="link-col">
                             <h4>Legal</h4>
-                            <a href="#">Privacy</a>
-                            <a href="#">Terms</a>
+                            <a href="#">Privacy Policy</a>
+                            <a href="#">Terms of Service</a>
                         </div>
                     </div>
                 </div>
                 <div className="footer-bottom">
-                    <p>&copy; 2026 CodeReview AI.</p>
+                    <p>&copy; 2026 Code Review Bot. All rights reserved.</p>
+                    <p className="footer-built-with">Built with ❤️ & Groq AI</p>
                 </div>
             </footer>
         </div>
