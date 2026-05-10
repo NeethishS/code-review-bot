@@ -1240,11 +1240,14 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
                     )}
 
                     {loading && (
-                        <div className="glass-card empty-review">
-                            <div className="loading-content">
-                                <span className="loading-spinner">🔄</span>
-                                <h3>Analyzing...</h3>
-                                <p>AI is reviewing your code</p>
+                        <div className="glass-card results-section skeleton-loading">
+                            <div className="loading-state-overlay">
+                                <div className="skeleton skeleton-title"></div>
+                                <div className="skeleton skeleton-box"></div>
+                                <div className="skeleton skeleton-text"></div>
+                                <div className="skeleton skeleton-text"></div>
+                                <div className="skeleton skeleton-card"></div>
+                                <div className="skeleton skeleton-card"></div>
                             </div>
                         </div>
                     )}
