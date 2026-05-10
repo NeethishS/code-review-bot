@@ -16,8 +16,8 @@
 
 .page-content {
     flex: 1;
-    padding: var(--spacing-xl);
-    max-width: 1600px;
+    padding: 24px; /* Standardized per request */
+    max-width: 1400px;
     width: 100%;
     margin: 0 auto;
     overflow-x: hidden;

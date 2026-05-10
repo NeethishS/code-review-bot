@@ -1,18 +1,22 @@
 .upload-analyser {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);
+    gap: var(--spacing-md); /* Tightened from XL */
 }
 
 /* Drop Zone */
 .drop-zone {
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-xl);
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-xl); /* Reduced from 2XL */
     text-align: center;
     transition: all var(--transition-base);
     background: var(--color-bg-secondary);
     cursor: pointer;
+}
+
+.page-header {
+    margin-bottom: 0; /* Tight gap like AI Demo */
 }
 
 .drop-zone.dragging {

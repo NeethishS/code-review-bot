@@ -1,13 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useEffect } from 'react';
 import './Login.css';
 
 interface LoginProps {
     onLoginSuccess: (token: string, user: { id: number; email: string; displayName: string }) => void;
+    onBackToLanding?: () => void;
 }
 
 type Tab = 'login' | 'register';
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login({ onLoginSuccess, onBackToLanding }: LoginProps) {
     const [tab, setTab] = useState<Tab>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -17,7 +18,60 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const API = 'http://localhost:3001/auth';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    const API = `${backendUrl}/auth`;
+
+    // Handle GitHub OAuth callback
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ghToken = params.get('gh_token');
+        const ghLogin = params.get('gh_login');
+        const ghName = params.get('gh_name');
+        const ghAvatar = params.get('gh_avatar');
+        const authError = params.get('auth_error');
+
+        if (authError) {
+            setError(`GitHub login failed: ${authError}`);
+            window.history.replaceState({}, '', window.location.pathname);
+            return;
+        }
+
+        if (ghToken && ghLogin) {
+            // GitHub OAuth successful - create/login user
+            handleGitHubSuccess(ghToken, ghLogin, ghName || ghLogin, ghAvatar || '');
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, []);
+
+    const handleGitHubSuccess = async (ghToken: string, ghLogin: string, ghName: string, ghAvatar: string) => {
+        setLoading(true);
+        try {
+            // Try to login/register with GitHub
+            const res = await fetch(`${API}/github-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    githubToken: ghToken,
+                    githubLogin: ghLogin,
+                    displayName: ghName || ghLogin,
+                    avatarUrl: ghAvatar,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                setError(data.error || 'GitHub login failed');
+                setLoading(false);
+                return;
+            }
+
+            onLoginSuccess(data.data.token, data.data.user);
+        } catch (err: any) {
+            setError('Failed to process GitHub login');
+            setLoading(false);
+        }
+    };
 
     const resetForm = () => {
         setEmail('');
@@ -53,27 +107,45 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             }
 
             if (tab === 'register') {
-                setSuccess('Account created! Logging you in...');
-                setTimeout(() => {
-                    onLoginSuccess(data.data.token, data.data.user);
-                }, 800);
+                setSuccess('Account created! Verifying your email...');
+                // Auto-verify email for demo
+                setTimeout(async () => {
+                    try {
+                        const verifyRes = await fetch(`${API}/verify-email`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email }),
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            onLoginSuccess(verifyData.data.token, verifyData.data.user);
+                        }
+                    } catch (err) {
+                        setError('Email verification failed');
+                        setLoading(false);
+                    }
+                }, 1000);
             } else {
                 onLoginSuccess(data.data.token, data.data.user);
             }
         } catch (err: any) {
             setError('Cannot connect to server. Make sure the backend is running.');
-        } finally {
             setLoading(false);
         }
     };
 
     const handleGitHubLogin = () => {
-        window.location.href = 'http://localhost:3001/auth/github';
+        window.location.href = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/auth/github`;
     };
 
     return (
         <div className="login-page">
             <div className="login-card">
+                {onBackToLanding && (
+                    <button className="back-to-landing" onClick={onBackToLanding}>
+                        ← Back
+                    </button>
+                )}
                 {/* Brand */}
                 <div className="login-brand">
                     <div className="login-brand-icon">🤖</div>
@@ -196,7 +268,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
                 {/* Footer */}
                 <div className="login-footer">
-                    Powered by Groq LLM • Built with ❤️
+                    Powered by Groq LLM
                 </div>
             </div>
         </div>

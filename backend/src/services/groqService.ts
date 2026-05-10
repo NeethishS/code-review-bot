@@ -21,10 +21,19 @@ interface AnalysisResult {
 class GroqService {
     private client: Groq;
     private config: GroqConfig;
+    private backupConfig: GroqConfig;
     private requestCount: number = 0;
     private lastResetTime: number = Date.now();
 
     constructor() {
+        
+        this.backupConfig = {
+            apiKey: process.env.BACKUP_GROQ_API_KEY || '',
+            model: process.env.BACKUP_GROQ_MODEL || 'llama-3.1-8b-instant',
+            maxTokens: parseInt(process.env.GROQ_MAX_TOKENS || '8000'),
+            temperature: parseFloat(process.env.GROQ_TEMPERATURE || '0.1'),
+        };
+
         this.config = {
             apiKey: process.env.GROQ_API_KEY || '',
             model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
@@ -76,44 +85,64 @@ class GroqService {
             temperature?: number;
             maxTokens?: number;
             model?: string;
+            customApiKey?: string;
         }
     ): Promise<AnalysisResult> {
-        try {
-            // Check rate limiting
-            if (!this.checkRateLimit()) {
-                return {
-                    success: false,
-                    error: 'Rate limit exceeded. Please try again in a minute.',
-                };
-            }
-
+        const execute = async (apiKey: string, model: string) => {
+            const tempClient = new Groq({ apiKey });
             const startTime = Date.now();
-
-            const completion = await this.client.chat.completions.create({
+            const completion = await tempClient.chat.completions.create({
                 messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt,
-                    },
-                    {
-                        role: 'user',
-                        content: userPrompt,
-                    },
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
                 ],
-                model: options?.model || this.config.model,
+                model: model,
                 temperature: options?.temperature ?? this.config.temperature,
                 max_tokens: options?.maxTokens || this.config.maxTokens,
                 top_p: 1,
                 stream: false,
             });
-
             const endTime = Date.now();
-            const responseTime = endTime - startTime;
+            return { completion, responseTime: endTime - startTime };
+        };
 
-            const content = completion.choices[0]?.message?.content || '';
-            const tokensUsed = completion.usage?.total_tokens || 0;
+        try {
+            if (!this.checkRateLimit()) {
+                return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' };
+            }
 
-            console.log(`✅ Groq API Response (${responseTime}ms, ${tokensUsed} tokens)`);
+            let result;
+
+            if (options?.customApiKey) {
+                try {
+                    result = await execute(options.customApiKey, options.model || this.config.model);
+                    console.log(`✅ Groq API Response via Custom Key`);
+                } catch (customErr: any) {
+                    console.warn('⚠️ Custom API Key failed, falling back to System Key:', customErr.message);
+                }
+            }
+
+            if (!result) {
+                try {
+                    result = await execute(this.config.apiKey, options?.model || this.config.model);
+                    console.log(`✅ Groq API Response via System Key`);
+                } catch (systemErr: any) {
+                    if (systemErr.status === 429 && this.backupConfig.apiKey) {
+                        console.warn('⚠️ System Key Rate Limit (429), falling back to Backup Key...');
+                        try {
+                            result = await execute(this.backupConfig.apiKey, this.backupConfig.model);
+                            console.log(`✅ Groq API Response via Backup Key`);
+                        } catch (backupErr: any) {
+                            throw backupErr;
+                        }
+                    } else {
+                        throw systemErr;
+                    }
+                }
+            }
+
+            const content = result.completion.choices[0]?.message?.content || '';
+            const tokensUsed = result.completion.usage?.total_tokens || 0;
 
             return {
                 success: true,
@@ -123,26 +152,13 @@ class GroqService {
             };
         } catch (error: any) {
             console.error('❌ Groq API Error:', error.message);
-
-            // Handle specific error types
             if (error.status === 429) {
-                return {
-                    success: false,
-                    error: 'Rate limit exceeded from Groq API. Please try again later.',
-                };
+                return { success: false, error: 'Rate limit exceeded from Groq API. Please try again later.' };
             }
-
             if (error.status === 401) {
-                return {
-                    success: false,
-                    error: 'Invalid Groq API key. Please check your configuration.',
-                };
+                return { success: false, error: 'Invalid Groq API key. Please check your configuration.' };
             }
-
-            return {
-                success: false,
-                error: error.message || 'Failed to get response from Groq API',
-            };
+            return { success: false, error: error.message || 'Failed to get response from Groq API' };
         }
     }
 

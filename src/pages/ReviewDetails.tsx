@@ -9,6 +9,14 @@ interface ReviewDetailsProps {
 function ReviewDetails({ reviewId }: ReviewDetailsProps) {
     const [review, setReview] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState<string | null>(null);
+
+    const handleExport = async (format: 'pdf' | 'markdown') => {
+        if (!reviewId) return;
+        setExporting(format);
+        await apiService.exportReview(reviewId, format);
+        setExporting(null);
+    };
 
     useEffect(() => {
         if (!reviewId) return;
@@ -77,6 +85,23 @@ function ReviewDetails({ reviewId }: ReviewDetailsProps) {
                             {review.success ? 'success' : 'failed'}
                         </span>
                     </div>
+                </div>
+
+                <div className="review-actions">
+                    <button 
+                        className="btn btn-ghost btn-sm" 
+                        onClick={() => handleExport('markdown')}
+                        disabled={!!exporting}
+                    >
+                        {exporting === 'markdown' ? '⏳...' : '📄 Export MD'}
+                    </button>
+                    <button 
+                        className="btn btn-primary btn-sm" 
+                        onClick={() => handleExport('pdf')}
+                        disabled={!!exporting}
+                    >
+                        {exporting === 'pdf' ? '⏳...' : '📥 Download PDF'}
+                    </button>
                 </div>
 
                 <div className="review-summary-stats">

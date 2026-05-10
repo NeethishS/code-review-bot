@@ -51,6 +51,28 @@
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-xl);
+}
+
+.review-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .review-header {
+        flex-direction: column;
+    }
+    
+    .review-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: var(--spacing-md);
+    }
 }
 
 .review-title-section {

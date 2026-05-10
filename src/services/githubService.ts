@@ -86,7 +86,8 @@ class GitHubService {
 
     /** Redirect to backend OAuth start */
     login(): void {
-        window.location.href = 'http://localhost:3001/auth/github';
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        window.location.href = `${backendUrl}/auth/github`;
     }
 
     private async request<T>(path: string): Promise<T> {

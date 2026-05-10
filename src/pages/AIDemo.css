@@ -19,9 +19,9 @@
 
 .demo-container {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: var(--spacing-xl);
-    margin-top: var(--spacing-lg);
+    grid-template-columns: 1.1fr 1fr; /* Slightly adjusted ratio */
+    gap: var(--spacing-lg); /* Tightened from XL */
+    margin-top: var(--spacing-md);
     align-items: start;
 }
 
@@ -66,9 +66,9 @@
 .input-section h3,
 .results-section h3,
 .output-section h3 {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm); /* Tightened */
     color: var(--color-text-primary);
-    font-size: 1.25rem;
+    font-size: 1.1rem; /* Slightly smaller */
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
@@ -107,9 +107,9 @@
 }
 
 .control-group label {
-    font-size: 0.875rem;
+    font-size: 0.7rem; /* Smaller meta text */
     font-weight: 600;
-    color: var(--color-text-secondary);
+    color: var(--color-text-muted); /* Dimmer secondary text */
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -156,14 +156,14 @@
     padding: var(--spacing-md);
     background: var(--color-bg-primary);
     border: 2px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md); /* Standardized */
     color: var(--color-text-primary);
     font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 0.9rem;
-    line-height: 1.6;
+    font-size: 0.85rem; /* Tighter text */
+    line-height: 1.5;
     resize: vertical;
     transition: all var(--transition-base);
-    min-height: 400px;
+    min-height: 350px; /* Tighter default */
 }
 
 .code-input:focus {

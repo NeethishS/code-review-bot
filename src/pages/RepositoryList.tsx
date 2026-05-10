@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 import './RepositoryList.css';
 
+import type { Page } from '../types';
+
 interface RepositoryListProps {
-    onNavigate: (page: any, params?: any) => void;
+    onNavigate: (page: Page, params?: any) => void;
 }
 
 function RepositoryList({ onNavigate }: RepositoryListProps) {
@@ -46,14 +48,7 @@ function RepositoryList({ onNavigate }: RepositoryListProps) {
         setSaving(false);
     };
 
-    const formatTime = (ts: string) => {
-        const diff = Date.now() - new Date(ts).getTime();
-        const mins = Math.floor(diff / 60000);
-        if (mins < 60) return `${mins}m ago`;
-        const hrs = Math.floor(mins / 60);
-        if (hrs < 24) return `${hrs}h ago`;
-        return `${Math.floor(hrs / 24)}d ago`;
-    };
+
 
     return (
         <div className="repository-list animate-fade-in">

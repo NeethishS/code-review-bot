@@ -51,20 +51,19 @@ function Settings() {
 
                 <div className="settings-group">
                     <div className="setting-item">
-                        <label htmlFor="openai-key" className="setting-label">
-                            OpenAI API Key
-                            <span className="required">*</span>
+                        <label htmlFor="groq-key" className="setting-label">
+                            Custom Groq API Key (Optional)
                         </label>
                         <input
-                            id="openai-key"
+                            id="groq-key"
                             type="password"
                             className="input"
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="sk-..."
+                            placeholder="gsk_..."
                         />
                         <p className="setting-help">
-                            Used for AI-powered code analysis and test generation
+                            Bypass system limits by providing your own Groq API key for analysis
                         </p>
                     </div>
 

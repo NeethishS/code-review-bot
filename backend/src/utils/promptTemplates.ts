@@ -322,6 +322,19 @@ Respond ONLY with valid JSON:
         user: (code: string, language: string) =>
             `Explain this ${language} code:\n\n\`\`\`${language}\n${code}\n\`\`\``,
     },
+
+    autoFix: {
+        system: `You are an expert code fixer. Analyze code and provide a fixed version.
+Return ONLY valid JSON with this exact structure:
+{
+  "fixedCode": "the complete fixed code here",
+  "issues": ["issue 1", "issue 2", ...],
+  "fixes": ["fix 1", "fix 2", ...],
+  "explanation": "brief explanation of changes"
+}`,
+        user: (code: string, language: string) =>
+            `Fix this ${language} code. Address all bugs, improve quality, and follow best practices while maintaining original functionality:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+    },
 };
 
 export default promptTemplates;

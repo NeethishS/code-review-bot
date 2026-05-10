@@ -64,6 +64,24 @@
     animation: cardEntry 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+.back-to-landing {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-to-landing:hover {
+    color: #ffffff;
+    transform: translateX(-4px);
+}
+
 @keyframes cardEntry {
     from {
         opacity: 0;

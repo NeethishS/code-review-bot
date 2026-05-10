@@ -29,7 +29,7 @@ function generateSessionId(): string {
     return `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export default function CodeExplainer() {
+export default function CodeExplainer({ preloadedCode, onPreloadConsumed }: { preloadedCode?: { code: string; language: string; filename: string } | null; onPreloadConsumed?: () => void }) {
     const [sessionId] = useState(generateSessionId);
     const [indexedFiles, setIndexedFiles] = useState<IndexedFile[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -41,6 +41,38 @@ export default function CodeExplainer() {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Handle preloaded code from GitHub
+    useEffect(() => {
+        if (preloadedCode) {
+            const processPreloadedCode = async () => {
+                setIsIndexing(true);
+                try {
+                    const result = await apiService.explainIndexFiles(sessionId, [{
+                        name: preloadedCode.filename,
+                        language: preloadedCode.language,
+                        content: preloadedCode.code,
+                    }]);
+                    if (result.success) {
+                        setIndexedFiles([{
+                            name: preloadedCode.filename,
+                            language: preloadedCode.language,
+                            size: preloadedCode.code.length,
+                        }]);
+                        setMessages([{
+                            role: 'assistant',
+                            content: `Loaded ${preloadedCode.filename} from GitHub. Ask me anything about this code!`,
+                            timestamp: new Date(),
+                        }]);
+                    }
+                } finally {
+                    setIsIndexing(false);
+                    onPreloadConsumed?.();
+                }
+            };
+            processPreloadedCode();
+        }
+    }, [preloadedCode, sessionId, onPreloadConsumed]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

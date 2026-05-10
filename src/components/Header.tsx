@@ -21,48 +21,7 @@ interface Notification {
 
 function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: HeaderProps) {
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: 1,
-            type: 'success',
-            title: 'Review Completed',
-            message: 'Code review for PR #234 has been completed successfully',
-            time: '5 minutes ago',
-            read: false,
-        },
-        {
-            id: 2,
-            type: 'warning',
-            title: 'Security Issue Found',
-            message: '3 security vulnerabilities detected in backend-api',
-            time: '1 hour ago',
-            read: false,
-        },
-        {
-            id: 3,
-            type: 'info',
-            title: 'New Repository Connected',
-            message: 'mobile-app repository has been successfully connected',
-            time: '2 hours ago',
-            read: false,
-        },
-        {
-            id: 4,
-            type: 'success',
-            title: 'Tests Generated',
-            message: '12 unit tests generated for authentication module',
-            time: '3 hours ago',
-            read: true,
-        },
-        {
-            id: 5,
-            type: 'error',
-            title: 'Analysis Failed',
-            message: 'Failed to analyze data-pipeline due to timeout',
-            time: '5 hours ago',
-            read: true,
-        },
-    ]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
 
     const toggleNotifications = () => {
         setShowNotifications(!showNotifications);
@@ -197,8 +156,16 @@ function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: Head
                         <div className="header-user-profile">
                             <span className="header-user-avatar">👤</span>
                             <span className="header-user-name">{authUser.displayName}</span>
-                            <button className="btn btn-ghost header-logout-btn" onClick={onLogout} title="Sign out">
-                                🚪
+                            <button 
+                                className="btn btn-ghost header-logout-btn" 
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to logout?')) {
+                                        onLogout?.();
+                                    }
+                                }} 
+                                title="Sign out"
+                            >
+                                🚪 Logout
                             </button>
                         </div>
                     )}

@@ -60,7 +60,7 @@ export default function ReviewHistory({ onViewReview }: Props) {
             <div className="page-header">
                 <div>
                     <h2>📜 Review History</h2>
-                    <p className="text-muted">{total} total reviews saved</p>
+                    <p className="rh-subtitle">{total} total reviews saved</p>
                 </div>
                 <button className="btn btn-ghost btn-sm" onClick={load}>↻ Refresh</button>
             </div>
@@ -95,54 +95,74 @@ export default function ReviewHistory({ onViewReview }: Props) {
             {/* Table */}
             <div className="glass-card rh-table-card">
                 {loading ? (
-                    <div className="rh-loading">⏳ Loading reviews...</div>
+                    <div className="responsive-table-container">
+                        <table className="rh-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>Type</th><th>Language</th><th>Status</th>
+                                    <th className="rh-hide-mobile">Tokens</th><th className="rh-hide-mobile">Cost</th><th>Time</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[...Array(5)].map((_, i) => (
+                                    <tr key={i}>
+                                        {[...Array(8)].map((__, j) => (
+                                            <td key={j} className={j === 4 || j === 5 ? 'rh-hide-mobile' : ''}><div className="skeleton-text"></div></td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : filtered.length === 0 ? (
                     <div className="rh-empty">
                         <span>📭</span>
                         <p>No reviews match your filters.</p>
                     </div>
                 ) : (
-                    <table className="rh-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Type</th>
-                                <th>Language</th>
-                                <th>Status</th>
-                                <th>Tokens</th>
-                                <th>Cost</th>
-                                <th>Time</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(r => (
-                                <tr key={r.id} className="rh-row" onClick={() => onViewReview(r.id.toString())}>
-                                    <td className="rh-id">#{r.id}</td>
-                                    <td>
-                                        <span className="rh-type-badge">
-                                            {typeIcon[r.analysis_type] || '📄'} {r.analysis_type}
-                                        </span>
-                                    </td>
-                                    <td><span className="rh-lang-badge">{r.language}</span></td>
-                                    <td>
-                                        <span className={`badge badge-${r.success ? 'success' : 'error'}`}>
-                                            {r.success ? '✓ success' : '✗ failed'}
-                                        </span>
-                                    </td>
-                                    <td className="rh-num">{r.tokens_used || 0}</td>
-                                    <td className="rh-num">${Number(r.cost || 0).toFixed(6)}</td>
-                                    <td className="rh-time">{formatTime(r.created_at)}</td>
-                                    <td>
-                                        <button className="btn btn-ghost btn-sm rh-view-btn"
-                                            onClick={e => { e.stopPropagation(); onViewReview(r.id.toString()); }}>
-                                            View →
-                                        </button>
-                                    </td>
+                    <div className="responsive-table-container">
+                        <table className="rh-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Type</th>
+                                    <th>Language</th>
+                                    <th>Status</th>
+                                    <th className="rh-hide-mobile">Tokens</th>
+                                    <th className="rh-hide-mobile">Cost</th>
+                                    <th>Time</th>
+                                    <th></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filtered.map(r => (
+                                    <tr key={r.id} className="rh-row" onClick={() => onViewReview(r.id.toString())}>
+                                        <td className="rh-id">#{r.id}</td>
+                                        <td>
+                                            <span className="rh-type-badge">
+                                                {typeIcon[r.analysis_type] || '📄'} {r.analysis_type}
+                                            </span>
+                                        </td>
+                                        <td><span className="rh-lang-badge">{r.language}</span></td>
+                                        <td>
+                                            <span className={`badge badge-${r.success ? 'success' : 'error'}`}>
+                                                {r.success ? '✓ success' : '✗ failed'}
+                                            </span>
+                                        </td>
+                                        <td className="rh-num rh-hide-mobile">{r.tokens_used || 0}</td>
+                                        <td className="rh-num rh-hide-mobile">${Number(r.cost || 0).toFixed(6)}</td>
+                                        <td className="rh-time">{formatTime(r.created_at)}</td>
+                                        <td>
+                                            <button className="btn btn-ghost btn-sm rh-view-btn"
+                                                onClick={e => { e.stopPropagation(); onViewReview(r.id.toString()); }}>
+                                                View →
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 

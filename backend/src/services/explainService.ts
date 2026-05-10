@@ -23,7 +23,7 @@ interface ExplainResult {
 
 class ExplainService {
     /** Main explain method — finds relevant chunk via vector search, then explains it */
-    async explain(sessionId: string, query: string): Promise<ExplainResult> {
+    async explain(sessionId: string, query: string, customApiKey?: string): Promise<ExplainResult> {
         // 1. Find relevant chunks
         const chunks = vectorStore.search(sessionId, query, 3);
 
@@ -55,19 +55,48 @@ ${context}
 
 Please explain the relevant parts that answer the question.`;
 
-        // 3. Try Groq first (cheap model)
-        try {
-            const completion = await groqExplain.chat.completions.create({
+        // 3. Try Groq first
+
+        const execute = async (apiKey: string, model: string) => {
+            const tempClient = new Groq({ apiKey });
+            const completion = await tempClient.chat.completions.create({
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },
                 ],
-                model: EXPLAIN_MODEL,
+                model: model,
                 temperature: 0.2,
                 max_tokens: 1024,
             });
+            return completion.choices[0]?.message?.content || '';
+        };
 
-            const explanation = completion.choices[0]?.message?.content || '';
+        try {
+            let explanation = '';
+            
+            if (customApiKey) {
+                try {
+                    explanation = await execute(customApiKey, EXPLAIN_MODEL);
+                    console.log('✅ Groq Explain via Custom Key');
+                } catch (customErr: any) {
+                    console.warn('⚠️ Custom API Key failed in explainer, falling back:', customErr.message);
+                }
+            }
+            
+            if (!explanation) {
+                try {
+                    explanation = await execute(process.env.GROQ_EXPLAIN_API_KEY || process.env.GROQ_API_KEY || '', EXPLAIN_MODEL);
+                    console.log('✅ Groq Explain via System Key');
+                } catch (sysErr: any) {
+                    if (sysErr.status === 429 && process.env.BACKUP_GROQ_API_KEY) {
+                        console.warn('⚠️ System Key Rate Limit (429), falling back to Backup Key in Explainer...');
+                        explanation = await execute(process.env.BACKUP_GROQ_API_KEY, process.env.BACKUP_GROQ_MODEL || 'llama-3.1-8b-instant');
+                        console.log('✅ Groq Explain via Backup Key');
+                    } else {
+                        throw sysErr;
+                    }
+                }
+            }
 
             return {
                 success: true,
@@ -79,13 +108,11 @@ Please explain the relevant parts that answer the question.`;
             };
         } catch (groqError: any) {
             console.warn('⚠️ Groq explain failed, trying RapidAPI fallback:', groqError.message);
-
-            // 4. Fallback to RapidAPI (sentiment/moderation — gives basic text analysis)
             return this.rapidApiFallback(query, topChunk);
         }
     }
 
-    /** RapidAPI fallback — analyzes the query text for sentiment/context */
+    /** RapidAPI fallback */
     private async rapidApiFallback(query: string, chunk: any): Promise<ExplainResult> {
         try {
             const response = await axios.post(

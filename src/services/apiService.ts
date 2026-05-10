@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export interface AnalysisRequest {
     code: string;
@@ -20,9 +20,78 @@ export interface AnalysisResponse {
 
 class ApiService {
     private baseURL: string;
+    private authToken: string | null = null;
 
     constructor() {
         this.baseURL = API_BASE_URL;
+        // Try to get token from localStorage on initialization
+        this.authToken = localStorage.getItem('crb_token');
+        // Set up axios interceptor to add auth token to all requests
+        this.setupAxiosInterceptor();
+    }
+
+    setAuthToken(token: string | null) {
+        this.authToken = token;
+        // Update axios interceptor
+        this.setupAxiosInterceptor();
+    }
+
+    private setupAxiosInterceptor() {
+        // Clear any existing interceptors
+        axios.interceptors.request.clear();
+
+        // Add interceptor to include auth token in all requests
+        axios.interceptors.request.use(
+            (config) => {
+                const isApiRequest = config.url?.includes(API_BASE_URL) || config.url?.startsWith('/api');
+                if (this.authToken && isApiRequest) {
+                    config.headers.Authorization = `Bearer ${this.authToken}`;
+                }
+                try {
+                    const settingsRaw = localStorage.getItem('app_settings');
+                    if (settingsRaw) {
+                        const settings = JSON.parse(settingsRaw);
+                        if (settings.apiKey && isApiRequest) {
+                            config.headers['X-Custom-API-Key'] = settings.apiKey;
+                        }
+                    }
+                } catch (e) {}
+                return config;
+            },
+            (error) => {
+                return Promise.reject(error);
+            }
+        );
+    }
+
+    /**
+     * Generic POST method
+     */
+    async post(endpoint: string, data: any): Promise<any> {
+        try {
+            const response = await axios.post(`${this.baseURL}${endpoint}`, data);
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message,
+            };
+        }
+    }
+
+    /**
+     * Generic GET method
+     */
+    async get(endpoint: string, params?: any): Promise<any> {
+        try {
+            const response = await axios.get(`${this.baseURL}${endpoint}`, { params });
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message,
+            };
+        }
     }
 
     /**
@@ -193,7 +262,7 @@ class ApiService {
      */
     async healthCheck(): Promise<any> {
         try {
-            const response = await axios.get(`http://localhost:3001/health`);
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/health`);
             return response.data;
         } catch (error: any) {
             return { status: 'error', error: error.message };
@@ -255,6 +324,28 @@ class ApiService {
             return response.data;
         } catch (error: any) {
             return { success: false, error: error.response?.data?.error || error.message };
+        }
+    }
+
+    async exportReview(id: string | number, format: 'pdf' | 'markdown' = 'pdf') {
+        try {
+            const response = await axios.get(`${this.baseURL}/reviews/${id}/export?format=${format}`, {
+                responseType: 'blob',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`
+                }
+            });
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `review-report-${id}.${format === 'pdf' ? 'pdf' : 'md'}`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            return { success: true };
+        } catch (error: any) {
+            return { success: false, error: error.message };
         }
     }
 

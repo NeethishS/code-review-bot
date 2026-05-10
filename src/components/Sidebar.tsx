@@ -1,15 +1,16 @@
 import './Sidebar.css';
 
-type Page = 'dashboard' | 'repositories' | 'review' | 'settings' | 'ai-demo' | 'upload' | 'explainer' | 'github' | 'history';
+import type { Page } from '../types';
 
 interface SidebarProps {
     currentPage: Page;
     onNavigate: (page: Page) => void;
     isOpen: boolean;
     onClose: () => void;
+    authUser?: { id: number; email: string; displayName: string } | null;
 }
 
-function Sidebar({ currentPage, onNavigate, isOpen, onClose }: SidebarProps) {
+function Sidebar({ currentPage, onNavigate, isOpen, onClose, authUser }: SidebarProps) {
     const menuItems = [
         { id: 'dashboard' as Page, label: 'Dashboard', icon: '📊' },
         { id: 'history' as Page, label: 'Review History', icon: '📜' },
@@ -17,7 +18,9 @@ function Sidebar({ currentPage, onNavigate, isOpen, onClose }: SidebarProps) {
         { id: 'ai-demo' as Page, label: 'AI Code Analyser', icon: '🤖' },
         { id: 'upload' as Page, label: 'Upload & Analyse', icon: '📂' },
         { id: 'explainer' as Page, label: 'Code Explainer', icon: '💬' },
+        { id: 'auto-fix' as Page, label: 'Auto-Fix', icon: '🔧' },
         { id: 'github' as Page, label: 'GitHub Browser', icon: '🐙' },
+        { id: 'automate-prs' as Page, label: 'Automate PRs', icon: '⚡' },
         { id: 'settings' as Page, label: 'Settings', icon: '⚙️' },
     ];
 
@@ -48,8 +51,8 @@ function Sidebar({ currentPage, onNavigate, isOpen, onClose }: SidebarProps) {
                 <div className="user-profile">
                     <div className="user-avatar">👤</div>
                     <div className="user-info">
-                        <div className="user-name">John Doe</div>
-                        <div className="user-role">Developer</div>
+                        <div className="user-name">{authUser?.displayName || 'User'}</div>
+                        <div className="user-role">{authUser?.email || 'Not logged in'}</div>
                     </div>
                 </div>
             </div>

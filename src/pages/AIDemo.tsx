@@ -896,32 +896,17 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
 
             if (response.success) {
                 setResult(response);
-                console.log('✅ Analysis successful:', response);
+
                 
                 // Track for learning/memory feature
                 learningService.analyzeResult(analysisType, response);
                 
-                // Save to DB
-                apiService.saveReview({
-                    language,
-                    analysis_type: analysisType,
-                    code_snippet: code.slice(0, 2000),
-                    result: response.data,
-                    tokens_used: response.tokensUsed,
-                    cost: response.cost,
-                    success: true,
-                });
+                // The backend already saves the review automatically.
             } else {
                 const error = categorizeError(response.error || 'Unknown error occurred');
                 setErrorInfo(error);
-                console.log('❌ Analysis failed:', response.error);
-                // Save failed attempt to DB
-                apiService.saveReview({
-                    language,
-                    analysis_type: analysisType,
-                    success: false,
-                    error_message: response.error,
-                });
+
+                // The backend already saves the failed review automatically.
             }
         } catch (error: any) {
             const errorMsg = error.message || 'An unexpected error occurred';

@@ -7,13 +7,17 @@ import AIDemo from './pages/AIDemo';
 import UploadAnalyser from './pages/UploadAnalyser';
 import CodeExplainer from './pages/CodeExplainer';
 import GitHubBrowser from './pages/GitHubBrowser';
+import AutoFix from './pages/AutoFix';
 import ReviewHistory from './pages/ReviewHistory';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
+import AutomatePRs from './pages/AutomatePRs';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import githubService from './services/githubService';
+import apiService from './services/apiService';
 
-type Page = 'dashboard' | 'repositories' | 'review' | 'settings' | 'ai-demo' | 'upload' | 'explainer' | 'github' | 'history';
+import type { Page } from './types';
 
 interface PreloadedCode {
     code: string;
@@ -47,21 +51,27 @@ function App() {
 
     const isLoggedIn = !!authToken && !!authUser;
 
-    // Verify token on mount
+    // Verify token on mount and set in API service
     useEffect(() => {
-        if (!authToken) return;
-        fetch('http://localhost:3001/auth/me', {
-            headers: { Authorization: `Bearer ${authToken}` },
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                if (!data.success) {
-                    handleLogout();
-                }
+        if (authToken) {
+            // Set token in API service
+            apiService.setAuthToken(authToken);
+            
+            // Verify token is still valid
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+            fetch(`${backendUrl}/auth/me`, {
+                headers: { Authorization: `Bearer ${authToken}` },
             })
-            .catch(() => {
-                // Server might be down — keep token but don't force logout
-            });
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.success) {
+                        handleLogout();
+                    }
+                })
+                .catch(() => {
+                    // Server might be down — keep token but don't force logout
+                });
+        }
     }, []);
 
     const handleLoginSuccess = (token: string, user: { id: number; email: string; displayName: string }) => {
@@ -69,6 +79,8 @@ function App() {
         localStorage.setItem(USER_KEY, JSON.stringify(user));
         setAuthToken(token);
         setAuthUser(user);
+        // Set the token in the API service
+        apiService.setAuthToken(token);
     };
 
     const handleLogout = () => {
@@ -76,6 +88,8 @@ function App() {
         localStorage.removeItem(USER_KEY);
         setAuthToken(null);
         setAuthUser(null);
+        // Clear the token from the API service
+        apiService.setAuthToken(null);
     };
 
     // Handle GitHub OAuth callback on mount
@@ -92,16 +106,29 @@ function App() {
         }
     }, []);
 
-    // ── If not logged in, show Login page ───────────────────
-    if (!isLoggedIn) {
-        return <Login onLoginSuccess={handleLoginSuccess} />;
-    }
-
     const handleAnalyseFromGitHub = (code: string, language: string, filename: string) => {
         setPreloadedCode({ code, language, filename });
         setCurrentPage('ai-demo');
         setSidebarOpen(false);
     };
+
+    const handleExplainFromGitHub = (code: string, language: string, filename: string) => {
+        setPreloadedCode({ code, language, filename });
+        setCurrentPage('explainer');
+        setSidebarOpen(false);
+    };
+
+
+
+    // ── If not logged in, show Landing page ───────────────────
+    if (!isLoggedIn) {
+        if (currentPage === 'landing' || currentPage === 'dashboard') {
+            return <Landing onGetStarted={() => setCurrentPage('login')} />;
+        }
+        return <Login onLoginSuccess={handleLoginSuccess} onBackToLanding={() => setCurrentPage('landing')} />;
+    }
+
+
 
     const renderPage = () => {
         switch (currentPage) {
@@ -121,11 +148,15 @@ function App() {
             case 'upload':
                 return <UploadAnalyser />;
             case 'explainer':
-                return <CodeExplainer />;
+                return <CodeExplainer preloadedCode={preloadedCode} onPreloadConsumed={() => setPreloadedCode(null)} />;
             case 'github':
-                return <GitHubBrowser onAnalyse={handleAnalyseFromGitHub} onGoToSettings={() => setCurrentPage('settings')} ghUser={ghUser} onLogout={() => { githubService.logout(); setGhUser(null); }} />;
+                return <GitHubBrowser onAnalyse={handleAnalyseFromGitHub} onExplain={handleExplainFromGitHub} onGoToSettings={() => setCurrentPage('settings')} ghUser={ghUser} onLogout={() => { githubService.logout(); setGhUser(null); }} />;
+            case 'auto-fix':
+                return <AutoFix />;
             case 'history':
                 return <ReviewHistory onViewReview={(id) => { setSelectedReviewId(id); setCurrentPage('review'); }} />;
+            case 'automate-prs':
+                return <AutomatePRs />;
             default:
                 return <Dashboard onViewReview={(id) => {
                     setSelectedReviewId(id);
@@ -146,6 +177,7 @@ function App() {
                 onNavigate={handleNavigate}
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
+                authUser={authUser}
             />
             <div className="main-content">
                 <Header

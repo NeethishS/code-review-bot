@@ -110,16 +110,7 @@ function UploadAnalyser() {
                 }
 
                 if (response.success) {
-                    // Save to DB
-                    apiService.saveReview({
-                        language: file.language,
-                        analysis_type: analysisType,
-                        code_snippet: code.slice(0, 2000),
-                        result: response.data,
-                        tokens_used: response.tokensUsed,
-                        cost: response.cost,
-                        success: true,
-                    });
+                    // The backend automatically saves successful reviews to DB
 
                     setFiles(prev => prev.map(f => f.id === file.id ? {
                         ...f,

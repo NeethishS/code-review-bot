@@ -22,10 +22,11 @@ router.post('/index', async (req: Request, res: Response) => {
 router.post('/query', async (req: Request, res: Response) => {
     try {
         const { sessionId, query } = req.body;
+        const customApiKey = req.header('x-custom-api-key');
         if (!sessionId || !query) {
             return res.status(400).json({ success: false, error: 'sessionId and query are required' });
         }
-        const result = await explainService.explain(sessionId, query);
+        const result = await explainService.explain(sessionId, query, customApiKey);
         return res.json(result);
     } catch (err: any) {
         return res.status(500).json({ success: false, error: err.message });

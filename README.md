@@ -1,270 +1,165 @@
-# 🤖 Code Review Bot - Groq LLM Integration
+# 🤖 Code Review Bot: AI-Powered Engineering Intelligence
 
-## Overview
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-username/code-review-bot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Groq Powered](https://img.shields.io/badge/AI-Groq%20Llama%203.3-blue)](https://groq.com)
 
-This project integrates **Groq's ultra-fast LLM API** (using Llama models) to provide AI-powered code analysis features.
+A high-performance, developer-first AI code review platform built to automate peer reviews, detect security vulnerabilities, and generate instant code fixes using **Groq's ultra-fast LLM inference**.
 
-## 🚀 Features Implemented
-
-### AI-Powered Analysis
-- ✅ **Code Smell Detection** - Identifies anti-patterns and code smells
-- ✅ **Security Vulnerability Scanning** - Detects security issues (SQL injection, XSS, secrets, etc.)
-- ✅ **Performance Optimization** - Suggests performance improvements
-- ✅ **Code Complexity Analysis** - Calculates cyclomatic complexity and maintainability metrics
-- ✅ **Duplicate Code Detection** - Finds code duplication violations
-- ✅ **AI Test Generation** - Generates unit tests automatically
-- ✅ **Full Code Review** - Comprehensive analysis with all checks
-
-### Technical Features
-- ✅ **Rate Limiting** - Prevents API abuse
-- ✅ **Token Optimization** - Efficient prompt engineering
-- ✅ **Cost Tracking** - Monitors API usage costs
-- ✅ **Error Handling** - Robust error management with fallbacks
-- ✅ **Health Checks** - API status monitoring
-
-## 📁 Project Structure
-
-```
-code-review-bot/
-├── backend/
-│   ├── src/
-│   │   ├── services/
-│   │   │   ├── groqService.ts      # Groq LLM integration
-│   │   │   └── codeAnalyzer.ts     # Code analysis logic
-│   │   ├── routes/
-│   │   │   └── aiRoutes.ts         # API endpoints
-│   │   ├── utils/
-│   │   │   └── promptTemplates.ts  # Optimized prompts
-│   │   └── server.ts               # Express server
-│   ├── .env                        # Environment variables
-│   ├── package.json
-│   └── tsconfig.json
-├── src/
-│   ├── services/
-│   │   └── apiService.ts           # Frontend API client
-│   └── ...
-└── FEATURES.md                     # Complete feature roadmap
-```
-
-## 🛠️ Setup Instructions
-
-### Backend Setup
-
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables:**
-   - Copy `.env.example` to `.env`
-   - Add your Groq API key (already configured)
-
-4. **Start the backend server:**
-   ```bash
-   npm run dev
-   ```
-
-   Server will start on `http://localhost:3001`
-
-### Frontend Setup
-
-1. **Navigate to project root:**
-   ```bash
-   cd ..
-   ```
-
-2. **Install dependencies (if not already done):**
-   ```bash
-   npm install
-   ```
-
-3. **Start the frontend:**
-   ```bash
-   npm run dev
-   ```
-
-## 🔌 API Endpoints
-
-### Base URL: `http://localhost:3001/api/ai`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/analyze` | POST | Main analysis endpoint (specify type) |
-| `/code-smell` | POST | Detect code smells |
-| `/security-scan` | POST | Security vulnerability scan |
-| `/performance` | POST | Performance analysis |
-| `/complexity` | POST | Complexity metrics |
-| `/duplicates` | POST | Duplicate code detection |
-| `/generate-tests` | POST | Generate unit tests |
-| `/full-review` | POST | Comprehensive code review |
-
-### Request Format
-
-```json
-{
-  "code": "function example() { ... }",
-  "language": "javascript",
-  "framework": "jest" // optional, for test generation
-}
-```
-
-### Response Format
-
-```json
-{
-  "success": true,
-  "data": { /* analysis results */ },
-  "tokensUsed": 1234,
-  "cost": 0.00001,
-  "analysisType": "code-smell"
-}
-```
-
-## 🧪 Testing the API
-
-### Using the Test Script
-
-```bash
-cd backend
-node test-ai.js
-```
-
-This will test all AI endpoints with sample code.
-
-### Using curl
-
-```bash
-curl -X POST http://localhost:3001/api/ai/code-smell \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "function test() { var x = 1; return x; }",
-    "language": "javascript"
-  }'
-```
-
-### Health Check
-
-```bash
-curl http://localhost:3001/health
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GROQ_API_KEY` | Your Groq API key | Required |
-| `GROQ_MODEL` | Llama model to use | `llama-3.3-70b-versatile` |
-| `GROQ_MAX_TOKENS` | Max tokens per request | `8000` |
-| `GROQ_TEMPERATURE` | Model temperature | `0.1` |
-| `MAX_REQUESTS_PER_MINUTE` | Rate limit | `10` |
-| `PORT` | Server port | `3001` |
-
-### Available Groq Models
-
-- `llama-3.3-70b-versatile` (Recommended - Best quality)
-- `llama-3.1-70b-versatile`
-- `llama-3.1-8b-instant` (Fastest)
-- `mixtral-8x7b-32768`
-- `gemma2-9b-it`
-
-## 💡 Usage Examples
-
-### Frontend Integration
-
-```typescript
-import apiService from './services/apiService';
-
-// Analyze code smells
-const result = await apiService.analyzeCodeSmells(code, 'javascript');
-
-if (result.success) {
-  console.log('Smells found:', result.data.smells);
-  console.log('Tokens used:', result.tokensUsed);
-}
-
-// Generate tests
-const tests = await apiService.generateTests(code, 'typescript', 'jest');
-
-// Full review
-const review = await apiService.fullReview(code, 'python');
-```
-
-## 🎯 Key Features
-
-### 1. **Optimized Prompts**
-- Carefully crafted prompts for each analysis type
-- Structured JSON responses for easy parsing
-- Token-efficient formatting
-
-### 2. **Rate Limiting**
-- Prevents API abuse
-- Configurable limits per minute
-- Automatic reset mechanism
-
-### 3. **Error Handling**
-- Graceful degradation
-- Detailed error messages
-- Retry logic for transient failures
-
-### 4. **Cost Tracking**
-- Real-time token usage monitoring
-- Cost estimation per request
-- Usage analytics
-
-## 📊 Performance
-
-- **Response Time**: ~1-3 seconds per analysis (Groq is extremely fast!)
-- **Token Usage**: ~500-2000 tokens per analysis
-- **Cost**: ~$0.00001-0.00005 per analysis (very cheap!)
-
-## 🔒 Security
-
-- API key stored in environment variables
-- CORS enabled for frontend communication
-- Input validation on all endpoints
-- Rate limiting to prevent abuse
-
-## 🐛 Troubleshooting
-
-### Server won't start
-- Check if port 3001 is available
-- Verify `.env` file exists with valid `GROQ_API_KEY`
-- Run `npm install` in backend directory
-
-### API returns errors
-- Check Groq API key is valid
-- Verify rate limits not exceeded
-- Check server logs for detailed errors
-
-### Frontend can't connect
-- Ensure backend server is running
-- Check CORS configuration
-- Verify API_BASE_URL in apiService.ts
-
-## 📝 Next Steps
-
-- [ ] Add frontend UI for code analysis
-- [ ] Implement caching for repeated analyses
-- [ ] Add GitHub integration
-- [ ] Create visualization for analysis results
-- [ ] Add user authentication
-- [ ] Implement database for storing results
-
-## 🤝 Contributing
-
-See `FEATURES.md` for the complete feature roadmap and implementation priorities.
-
-## 📄 License
-
-MIT
+![Main Dashboard](./screenshots/dashboard.png)
 
 ---
 
-**Powered by Groq** 🚀 - Ultra-fast LLM inference
+## 📺 Demo Video
+Experience the full workflow in action:
+[**Watch Demo Video (Local)**](./screenshots/demo_video.mp4) | [**Download from Google Drive**](https://drive.google.com/uc?id=1UE70qokcnWWCeOavoXwG-mf7U04eRGUi&export=download)
+
+---
+
+## 🚀 Key Features
+
+### 🧠 Advanced AI Analysis
+- **Auto-Fix Engine**: AI doesn't just find bugs; it generates formatted diffs to fix them instantly.
+- **Security Audit**: Deep scanning for SQL Injection, XSS, Secret Leaks, and OWASP Top 10.
+- **Code Explainer**: High-density architectural explanations for complex codebases.
+- **Performance Profiling**: Identifies Big O bottlenecks and memory leaks.
+
+### 🔌 Ecosystem Integration
+- **GitHub First**: Browse repositories, fetch files, and trigger reviews directly from your GitHub account.
+- **PR Automation**: Set up webhooks to automatically review every Pull Request.
+- **BYOK (Bring Your Own Key)**: Use system keys or provide your own Groq API key for unlimited analysis.
+
+### 📊 Enterprise Analytics
+- **Review History**: Persistent storage of every analysis with token usage and cost tracking.
+- **Exportable Reports**: Generate professional PDF and Markdown reports for compliance and sharing.
+- **KPI Dashboard**: Real-time metrics on success rates, language distribution, and team velocity.
+
+---
+
+## 🖼️ Application Gallery
+
+| Landing Page | Login Experience |
+|--------------|------------------|
+| ![Landing](./screenshots/landing_page.png) | ![Login](./screenshots/login_page.png) |
+
+| Upload & Analyse | PR Automation |
+|------------------|---------------|
+| ![Upload](./screenshots/upload_analyser.png) | ![Webhooks](./screenshots/webhook_config.png) |
+
+| Review History | Setup Guide |
+|----------------|-------------|
+| ![History](./screenshots/review_history.png) | ![Setup](./screenshots/setup_guide.png) |
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    User((Developer)) -->|React SPA| Frontend[Vite Frontend]
+    Frontend -->|REST API| Backend[Express Backend]
+    Backend -->|Auth| DB[(PostgreSQL)]
+    Backend -->|Webhooks| GitHub[GitHub API]
+    
+    subgraph "AI Inference Layer"
+        Backend -->|Primary| Groq[Groq SDK / Llama 3.3]
+        Backend -->|Fallback| RapidAPI[RapidAPI / Backup Model]
+    end
+    
+    Groq -->|Structured JSON| Backend
+    Backend -->|Review Results| Frontend
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite, Monaco Editor (IDE Experience).
+- **Backend**: Node.js, Express, TypeScript, PDFKit.
+- **Database**: PostgreSQL (Prisma-ready).
+- **AI**: Groq Cloud SDK (Llama 3.1/3.3), RapidAPI (Fallback logic).
+- **Styling**: Vanilla CSS with a custom "Modern High-Density" design system.
+
+---
+
+## 🚦 Getting Started
+
+### Prerequisites
+- Node.js (v18+)
+- PostgreSQL
+- Groq API Key
+
+### Installation
+
+1. **Clone & Install**
+   ```bash
+   git clone https://github.com/your-username/code-review-bot.git
+   cd code-review-bot
+   npm install
+   cd backend && npm install
+   ```
+
+2. **Environment Configuration**
+   Create a `.env` file in the `backend/` directory:
+   ```env
+   # API Keys
+   GROQ_API_KEY=your_key_here
+   GITHUB_PAT=your_github_token
+   
+   # Database
+   DATABASE_URL=postgresql://user:pass@localhost:5432/review_bot
+   
+   # Auth
+   JWT_SECRET=your_super_secret
+   ```
+
+3. **Database Migration**
+   ```bash
+   cd backend
+   npm run migrate
+   ```
+
+4. **Launch**
+   ```bash
+   # Terminal 1 (Backend)
+   cd backend && npm run dev
+   
+   # Terminal 2 (Frontend)
+   npm run dev
+   ```
+
+---
+
+## 🚢 Deployment
+
+| Component | Provider | Strategy |
+|-----------|----------|----------|
+| **Frontend** | Vercel / Netlify | Git Push |
+| **Backend** | Render / Heroku | Docker / Node Runtime |
+| **Database** | Supabase / Railway | Managed Postgres |
+
+---
+
+## 🛡️ Seniority Boost: Engineering Highlights
+- **Skeletal Loading**: Progressive UI states for better psychological perceived performance.
+- **JSON Fallback Parsing**: Robust regex-based extraction for non-standard LLM outputs.
+- **Verbatim Module Syntax**: Enforced TypeScript type-only imports for cleaner builds.
+- **Timing Safe Verification**: Webhook signature verification to prevent timing attacks.
+
+---
+
+## 🤝 Contributing
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+*Built for Developers by Developers* 🚀

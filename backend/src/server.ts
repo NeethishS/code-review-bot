@@ -7,6 +7,7 @@ import reviewRoutes from './routes/reviewRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import explainRoutes from './routes/explainRoutes';
 import authRoutes from './routes/authRoutes';
+import webhookRoutes from './routes/webhookRoutes';
 import groqService from './services/groqService';
 import responseCache from './utils/responseCache';
 import migrate from './db/migrate';
@@ -64,6 +65,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/explain', explainRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

@@ -25,6 +25,7 @@ function langOf(path: string) {
 
 interface Props {
     onAnalyse: (code: string, language: string, filename: string) => void;
+    onExplain?: (code: string, language: string, filename: string) => void;
     onGoToSettings: () => void;
     ghUser?: { login: string; avatar_url: string } | null;
     onLogout?: () => void;
@@ -70,7 +71,7 @@ function buildTree(items: GHTreeItem[]): TreeNode[] {
 
 function TreeNodeRow({ node, onFileClick, loadingFile }: {
     node: TreeNode;
-    onFileClick: (path: string) => void;
+    onFileClick: (path: string, action: 'analyze' | 'explain') => void;
     loadingFile: string | null;
 }) {
     const [open, setOpen] = useState(node.depth < 1);
@@ -85,7 +86,6 @@ function TreeNodeRow({ node, onFileClick, loadingFile }: {
                 style={{ paddingLeft: `${node.depth * 16 + 8}px` }}
                 onClick={() => {
                     if (!isFile) setOpen(o => !o);
-                    else if (isCode) onFileClick(node.path);
                 }}
             >
                 <span className="tree-icon">
@@ -93,8 +93,18 @@ function TreeNodeRow({ node, onFileClick, loadingFile }: {
                 </span>
                 <span className="tree-name">{node.name}</span>
                 {isLoading && <span className="tree-spinner">⏳</span>}
-                {isCode && !isLoading && <span className="tree-analyse-hint">click to analyse</span>}
+                {isCode && !isLoading && <span className="tree-analyse-hint">click for options</span>}
             </div>
+            {isCode && !isLoading && (
+                <div className="tree-actions">
+                    <button className="tree-action-btn tree-analyze-btn" onClick={() => onFileClick(node.path, 'analyze')} title="Analyze code">
+                        🔍 Analyze
+                    </button>
+                    <button className="tree-action-btn tree-explain-btn" onClick={() => onFileClick(node.path, 'explain')} title="Explain code">
+                        💬 Explain
+                    </button>
+                </div>
+            )}
             {!isFile && open && node.children?.map(child => (
                 <TreeNodeRow key={child.path} node={child} onFileClick={onFileClick} loadingFile={loadingFile} />
             ))}
@@ -102,7 +112,7 @@ function TreeNodeRow({ node, onFileClick, loadingFile }: {
     );
 }
 
-export default function GitHubBrowser({ onAnalyse, onGoToSettings, ghUser, onLogout }: Props) {
+export default function GitHubBrowser({ onAnalyse, onExplain, onGoToSettings, ghUser, onLogout }: Props) {
     const [view, setView] = useState<View>('repos');
     const hasToken = githubService.isLoggedIn();
     const [user] = useState(ghUser || githubService.getUser());
@@ -164,7 +174,7 @@ export default function GitHubBrowser({ onAnalyse, onGoToSettings, ghUser, onLog
         }
     };
 
-    const handleFileClick = async (path: string) => {
+    const handleFileClick = async (path: string, action: 'analyze' | 'explain' = 'analyze') => {
         if (!selectedRepo) return;
         setLoadingFile(path);
         setError('');
@@ -176,7 +186,14 @@ export default function GitHubBrowser({ onAnalyse, onGoToSettings, ghUser, onLog
                 setError(`File too large (${Math.round(size / 1024)}KB). Max 100KB for analysis.`);
                 return;
             }
-            onAnalyse(content, langOf(path), path.split('/').pop() || path);
+            const language = langOf(path);
+            const filename = path.split('/').pop() || path;
+            
+            if (action === 'explain') {
+                onExplain?.(content, language, filename);
+            } else {
+                onAnalyse(content, language, filename);
+            }
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -194,7 +211,7 @@ export default function GitHubBrowser({ onAnalyse, onGoToSettings, ghUser, onLog
                 <p className="gh-token-hint">
                     Need a token? <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer">Generate one here</a> with <code>repo</code> scope.
                 </p>
-                <button className="btn btn-ghost gh-refresh-btn" onClick={() => setHasToken(!!githubService.getToken())}>
+                <button className="btn btn-ghost gh-refresh-btn" onClick={() => window.location.reload()}>
                     I've added my token ↻
                 </button>
             </div>
@@ -208,12 +225,25 @@ export default function GitHubBrowser({ onAnalyse, onGoToSettings, ghUser, onLog
                     <h2>🐙 GitHub Browser</h2>
                     <p className="text-muted">Browse repos and send files directly to the AI Analyser</p>
                 </div>
-                {user && (
-                    <div className="gh-user-badge">
-                        <img src={user.avatar_url} alt={user.login} className="gh-avatar" />
-                        <span>@{user.login}</span>
-                    </div>
-                )}
+                <div className="gh-header-right">
+                    {user && (
+                        <div className="gh-user-badge">
+                            <img src={user.avatar_url} alt={user.login} className="gh-avatar" />
+                            <span>@{user.login}</span>
+                        </div>
+                    )}
+                    <button 
+                        className="btn btn-danger gh-disconnect-btn"
+                        onClick={() => {
+                            if (confirm('Disconnect your GitHub account?')) {
+                                onLogout?.();
+                            }
+                        }}
+                        title="Disconnect GitHub account"
+                    >
+                        🔌 Disconnect
+                    </button>
+                </div>
             </div>
 
             {error && (

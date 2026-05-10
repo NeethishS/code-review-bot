@@ -99,7 +99,10 @@ class VectorStore {
         }));
 
         scored.sort((a, b) => b.score - a.score);
-        return scored.slice(0, topK).filter(s => s.score > 0).map(s => s.chunk);
+        const results = scored.slice(0, topK).filter(s => s.score > 0).map(s => s.chunk);
+        
+        // If no keyword match, return the first few chunks as fallback context
+        return results.length > 0 ? results : sessionChunks.slice(0, topK);
     }
 
     /** List all indexed files for a session */
