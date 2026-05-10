@@ -11,6 +11,27 @@ An AI-powered code analysis and review platform designed for modern engineering 
 
 ---
 
+## 📺 Product Showcase
+
+### Main Dashboard
+![Dashboard](./screenshots/dashboard.png)
+
+### 🖼️ Feature Highlights
+| Landing Page | AI Code Analyser |
+|--------------|------------------|
+| ![Landing](./screenshots/landing_page.png) | ![Analyser](./screenshots/upload_analyser.png) |
+
+| Webhook Config | Review History |
+|----------------|----------------|
+| ![Webhooks](./screenshots/webhook_config.png) | ![History](./screenshots/review_history.png) |
+
+---
+
+## 🎥 Video Walkthrough
+**[Watch the Demo Video](./screenshots/demo_video.mp4)**
+
+---
+
 ## 🏗️ Architecture
 
 ```mermaid

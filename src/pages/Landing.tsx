@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './Landing.css';
 
 interface LandingProps {
@@ -5,6 +6,7 @@ interface LandingProps {
 }
 
 function Landing({ onGetStarted }: LandingProps) {
+    const [showDemo, setShowDemo] = useState(false);
     return (
         <div className="landing-page">
             {/* Nav */}
@@ -37,9 +39,9 @@ function Landing({ onGetStarted }: LandingProps) {
                         <button className="btn btn-primary btn-lg" onClick={onGetStarted}>
                             Get Started for Free
                         </button>
-                        <a href="#how-it-works" className="btn btn-ghost btn-lg">
-                            Explore Features
-                        </a>
+                        <button className="btn btn-ghost btn-lg" onClick={() => setShowDemo(true)}>
+                            Watch Demo
+                        </button>
                     </div>
                     <div className="hero-stats">
                         <div className="stat-item">
@@ -203,6 +205,22 @@ function Landing({ onGetStarted }: LandingProps) {
                     <p className="footer-built-with">Built with ❤️ & Groq AI</p>
                 </div>
             </footer>
+
+            {showDemo && (
+                <div className="demo-modal-overlay" onClick={() => setShowDemo(false)}>
+                    <div className="demo-modal-content" onClick={e => e.stopPropagation()}>
+                        <button className="demo-modal-close" onClick={() => setShowDemo(false)}>✕</button>
+                        <video 
+                            className="demo-video-player" 
+                            controls 
+                            autoPlay 
+                            src="/screenshots/demo_video.mp4"
+                        >
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
