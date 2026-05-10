@@ -1052,7 +1052,7 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
                                 )}
                             </button>
                             
-                            {(result || errorInfo) && (
+                            {(result || errorInfo) ? (
                                 <button
                                     onClick={() => {
                                         setResult(null);
@@ -1062,6 +1062,8 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
                                 >
                                     Clear Results
                                 </button>
+                            ) : (
+                                <div className="btn-clear-placeholder"></div>
                             )}
                         </div>
                     </div>

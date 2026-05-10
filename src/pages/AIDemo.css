@@ -180,17 +180,19 @@
 }
 
 .button-group {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto; /* Fixed columns */
     gap: var(--spacing-md);
     margin-top: var(--spacing-lg);
     padding: var(--spacing-md);
     background: var(--color-bg-tertiary);
     border-top: 1px solid var(--color-border);
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    margin: var(--spacing-lg) calc(var(--spacing-xl) * -1) calc(var(--spacing-xl) * -1) calc(var(--spacing-xl) * -1);
+    min-height: 80px; /* Lock height */
+}
+
+.btn-clear-placeholder {
+    width: 120px; /* Match Clear button width */
 }
 
 .btn-analyze {
