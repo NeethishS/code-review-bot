@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import apiService from '../services/apiService';
 import type { GHUser } from '../services/githubService';
 import './Header.css';
 
@@ -23,22 +24,54 @@ function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: Head
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
+    useEffect(() => {
+        if (authUser) {
+            fetchNotifications();
+        }
+    }, [authUser]);
+
+    const fetchNotifications = async () => {
+        const res = await apiService.getNotifications();
+        if (res.success) {
+            setNotifications(res.data.map((n: any) => ({
+                id: n.id,
+                type: n.type,
+                title: n.title,
+                message: n.message,
+                time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                read: n.read
+            })));
+        }
+    };
+
     const toggleNotifications = () => {
+        if (!showNotifications) {
+            fetchNotifications();
+        }
         setShowNotifications(!showNotifications);
     };
 
-    const markAsRead = (id: number) => {
-        setNotifications(notifications.map(notif =>
-            notif.id === id ? { ...notif, read: true } : notif
-        ));
+    const markAsRead = async (id: number) => {
+        const res = await apiService.markNotificationRead(id);
+        if (res.success) {
+            setNotifications(notifications.map(notif =>
+                notif.id === id ? { ...notif, read: true } : notif
+            ));
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(notifications.map(notif => ({ ...notif, read: true })));
+    const markAllAsRead = async () => {
+        const res = await apiService.markAllNotificationsRead();
+        if (res.success) {
+            setNotifications(notifications.map(notif => ({ ...notif, read: true })));
+        }
     };
 
-    const clearNotification = (id: number) => {
-        setNotifications(notifications.filter(notif => notif.id !== id));
+    const clearNotification = async (id: number) => {
+        const res = await apiService.deleteNotification(id);
+        if (res.success) {
+            setNotifications(notifications.filter(notif => notif.id !== id));
+        }
     };
 
     const unreadCount = notifications.filter(n => !n.read).length;

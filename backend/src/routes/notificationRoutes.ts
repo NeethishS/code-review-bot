@@ -49,7 +49,7 @@ router.patch('/:id/read', requireAuth, async (req: AuthRequest, res: Response) =
     try {
         const result = await pool.query(
             'UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2 RETURNING *',
-            [req.params.id]
+            [req.params.id, req.userId]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Notification not found' });

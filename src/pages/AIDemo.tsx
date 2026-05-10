@@ -897,6 +897,12 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
             if (response.success) {
                 setResult(response);
 
+                // Create a notification
+                apiService.createNotification(
+                    'success',
+                    'Analysis Complete',
+                    `Your ${analysisType.replace('-', ' ')} review is ready!`
+                ).catch(() => {}); // Silent fail if notification fails
                 
                 // Track for learning/memory feature
                 learningService.analyzeResult(analysisType, response);
