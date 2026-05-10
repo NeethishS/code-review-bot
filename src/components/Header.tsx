@@ -141,12 +141,12 @@ function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: Head
                     </div>
 
                     {ghUser ? (
-                        <div className="gh-header-user">
+                        <div className="gh-header-user animate-fade-in">
                             <img src={ghUser.avatar_url} alt={ghUser.login} className="gh-header-avatar" />
                             <span className="gh-header-login">@{ghUser.login}</span>
                         </div>
                     ) : (
-                        <button className="btn btn-ghost gh-login-btn" onClick={onGitHubLogin}>
+                        <button className="btn btn-ghost gh-login-btn animate-fade-in" onClick={onGitHubLogin}>
                             <span>🐙</span>
                             <span>Link GitHub</span>
                         </button>
