@@ -113,12 +113,14 @@
 
 .hero-stats {
     display: flex;
-    gap: var(--spacing-3xl);
+    gap: 40px; /* Force large gap */
+    margin-top: 20px;
 }
 
 .stat-item {
     display: flex;
     flex-direction: column;
+    min-width: 130px;
 }
 
 .stat-value {
