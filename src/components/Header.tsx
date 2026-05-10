@@ -21,7 +21,7 @@ interface Notification {
     read: boolean;
 }
 
-function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: HeaderProps) {
+function Header({ onMenuClick, ghUser, onGitHubLogin, onGitHubLogout, authUser, onLogout }: HeaderProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
