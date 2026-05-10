@@ -9,6 +9,7 @@ interface HeaderProps {
     onGitHubLogin?: () => void;
     authUser?: { id: number; email: string; displayName: string } | null;
     onLogout?: () => void;
+    onGitHubLogout?: () => void;
 }
 
 interface Notification {
@@ -177,6 +178,13 @@ function Header({ onMenuClick, ghUser, onGitHubLogin, authUser, onLogout }: Head
                         <div className="gh-header-user animate-fade-in">
                             <img src={ghUser.avatar_url} alt={ghUser.login} className="gh-header-avatar" />
                             <span className="gh-header-login">@{ghUser.login}</span>
+                            <button 
+                                className="btn-unlink-gh" 
+                                onClick={onGitHubLogout}
+                                title="Disconnect GitHub account"
+                            >
+                                ✕
+                            </button>
                         </div>
                     ) : (
                         <button className="btn btn-ghost gh-login-btn animate-fade-in" onClick={onGitHubLogin}>

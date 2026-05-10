@@ -184,6 +184,12 @@ function App() {
                     onMenuClick={() => setSidebarOpen(!sidebarOpen)}
                     ghUser={ghUser}
                     onGitHubLogin={() => githubService.login()}
+                    onGitHubLogout={() => {
+                        if (window.confirm('Disconnect GitHub account?')) {
+                            githubService.logout();
+                            setGhUser(null);
+                        }
+                    }}
                     authUser={authUser}
                     onLogout={handleLogout}
                 />
