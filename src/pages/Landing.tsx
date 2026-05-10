@@ -1,24 +1,10 @@
-import { useState } from 'react';
 import './Landing.css';
 
 interface LandingProps {
     onGetStarted: () => void;
 }
 
-// 👇 Paste your YouTube video ID here after uploading as Unlisted
-const DEMO_YOUTUBE_ID = ''; // e.g. 'dQw4w9WgXcQ'
-
-const DEMO_SLIDES = [
-    { src: '/screenshots/dashboard.png', label: '📊 Main Dashboard', desc: 'Full analysis history and quick actions at a glance' },
-    { src: '/screenshots/upload_analyser.png', label: '🔍 AI Code Analyser', desc: 'Multi-dimensional code analysis powered by Groq Llama 3' },
-    { src: '/screenshots/review_history.png', label: '📋 Review History', desc: 'Persistent review database with full result access' },
-    { src: '/screenshots/webhook_config.png', label: '🔗 Webhook Config', desc: 'Automated PR review triggers via GitHub Webhooks' },
-    { src: '/screenshots/landing_page.png', label: '🚀 Landing Page', desc: 'Clean, professional product landing experience' },
-];
-
 function Landing({ onGetStarted }: LandingProps) {
-    const [showDemo, setShowDemo] = useState(false);
-    const [slide, setSlide] = useState(0);
     return (
         <div className="landing-page">
             {/* Nav */}
@@ -51,9 +37,9 @@ function Landing({ onGetStarted }: LandingProps) {
                         <button className="btn btn-primary btn-lg" onClick={onGetStarted}>
                             Get Started for Free
                         </button>
-                        <button className="btn btn-ghost btn-lg" onClick={() => setShowDemo(true)}>
-                            Watch Demo
-                        </button>
+                        <a href="#how-it-works" className="btn btn-ghost btn-lg">
+                            Explore Features
+                        </a>
                     </div>
                     <div className="hero-stats">
                         <div className="stat-item">
@@ -218,52 +204,6 @@ function Landing({ onGetStarted }: LandingProps) {
                 </div>
             </footer>
 
-            {showDemo && (
-                <div className="demo-modal-overlay" onClick={() => setShowDemo(false)}>
-                    <div className="demo-modal-content demo-carousel-modal" onClick={e => e.stopPropagation()}>
-                        <button className="demo-modal-close" onClick={() => setShowDemo(false)}>✕</button>
-
-                        {/* Header */}
-                        <div className="demo-carousel-header">
-                            <h3>{DEMO_SLIDES[slide].label}</h3>
-                            <p>{DEMO_SLIDES[slide].desc}</p>
-                        </div>
-
-                        {/* Screenshot */}
-                        <div className="demo-carousel-img-wrap">
-                            <img
-                                key={slide}
-                                src={DEMO_SLIDES[slide].src}
-                                alt={DEMO_SLIDES[slide].label}
-                                className="demo-carousel-img"
-                            />
-                        </div>
-
-                        {/* Controls */}
-                        <div className="demo-carousel-controls">
-                            <button
-                                className="demo-carousel-btn"
-                                onClick={() => setSlide(s => (s - 1 + DEMO_SLIDES.length) % DEMO_SLIDES.length)}
-                            >←</button>
-
-                            <div className="demo-carousel-dots">
-                                {DEMO_SLIDES.map((_, i) => (
-                                    <button
-                                        key={i}
-                                        className={`demo-dot ${i === slide ? 'active' : ''}`}
-                                        onClick={() => setSlide(i)}
-                                    />
-                                ))}
-                            </div>
-
-                            <button
-                                className="demo-carousel-btn"
-                                onClick={() => setSlide(s => (s + 1) % DEMO_SLIDES.length)}
-                            >→</button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
