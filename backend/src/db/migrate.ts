@@ -76,11 +76,14 @@ async function migrate() {
     }
 }
 
-migrate()
-    .then(() => process.exit(0))
-    .catch((err) => {
-        console.error(err);
-        process.exit(1);
-    });
+// Only run migrations directly if this file is executed as the main entry point
+if (require.main === module) {
+    migrate()
+        .then(() => process.exit(0))
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        });
+}
 
 export default migrate;
