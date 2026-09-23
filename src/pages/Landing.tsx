@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './Landing.css';
 
 interface LandingProps {
@@ -41,7 +41,7 @@ const DEMO_FILES: Record<FileKey, FileDemo> = {
         issueTitle: 'SQL Injection Vulnerability',
         issueSeverity: 'Critical',
         issueLine: 2,
-        issueDesc: 'User input is directly concatenated into the SQL query string. Attackers can inject arbitrary SQL payloads.',
+        issueDesc: 'User input is directly concatenated into the SQL query string. Attackers can execute arbitrary SQL commands.',
         suggestedFix: 'const result = await db.query(\n  "SELECT * FROM users WHERE id = ?", [input]\n);'
     },
     'auth.ts': {
@@ -63,7 +63,7 @@ const DEMO_FILES: Record<FileKey, FileDemo> = {
         issueTitle: 'Insecure JWT Decoding',
         issueSeverity: 'High',
         issueLine: 3,
-        issueDesc: 'jwt.decode() does not verify signature. An attacker can forge arbitrary payloads without detection.',
+        issueDesc: 'jwt.decode() does not verify cryptographic signature. Anyone can forge arbitrary claims without detection.',
         suggestedFix: 'return jwt.verify(token, process.env.JWT_SECRET!, {\n  algorithms: ["HS256"]\n});'
     },
     'utils.ts': {
@@ -84,7 +84,7 @@ const DEMO_FILES: Record<FileKey, FileDemo> = {
         issueTitle: 'Dangerous eval() Execution',
         issueSeverity: 'Critical',
         issueLine: 3,
-        issueDesc: 'Dynamic eval() allows arbitrary JavaScript code execution if subtotal is tainted.',
+        issueDesc: 'Dynamic eval() allows arbitrary JavaScript code execution if subtotal is tainted by user input.',
         suggestedFix: 'return Number(subtotal) * rate;'
     },
     'routes.ts': {
@@ -107,10 +107,12 @@ const DEMO_FILES: Record<FileKey, FileDemo> = {
         issueTitle: 'Plaintext Secret in Logs',
         issueSeverity: 'High',
         issueLine: 3,
-        issueDesc: 'Logging raw sensitive credentials in stdout violates compliance standards like GDPR & PCI-DSS.',
+        issueDesc: 'Logging raw sensitive credentials in stdout violates compliance standards like GDPR & SOC-2.',
         suggestedFix: 'logger.info("Password received: [REDACTED]");'
     }
 };
+
+const FILE_KEYS: FileKey[] = ['processData.ts', 'auth.ts', 'utils.ts', 'routes.ts'];
 
 export default function Landing({ onGetStarted }: LandingProps) {
     // Theme state (dark / light)
@@ -121,6 +123,7 @@ export default function Landing({ onGetStarted }: LandingProps) {
 
     useEffect(() => {
         localStorage.setItem('crb_landing_theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
 
     const toggleTheme = () => {
@@ -134,10 +137,10 @@ export default function Landing({ onGetStarted }: LandingProps) {
     const [isFixingAnim, setIsFixingAnim] = useState(false);
     const [copiedFix, setCopiedFix] = useState(false);
     const [showFixBanner, setShowFixBanner] = useState(false);
+    const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
 
-    // CLI box state
-    const [cliScanning, setCliScanning] = useState(false);
-    const [cliScanCount, setCliScanCount] = useState(0);
+    // Terminal typing animation state
+    const [terminalStep, setTerminalStep] = useState(0);
 
     // Diff Showcase state
     const [diffTab, setDiffTab] = useState<'review' | 'diff' | 'files'>('review');
@@ -146,11 +149,49 @@ export default function Landing({ onGetStarted }: LandingProps) {
     const [accordionOpen, setAccordionOpen] = useState(false);
 
     const currentDemo = DEMO_FILES[activeFile];
+    const autoPlayTimerRef = useRef<any>(null);
 
-    // Trigger Fix Animation in Hero IDE
+    // Terminal typing loop
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTerminalStep(prev => (prev + 1) % 4);
+        }, 2200);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Automatic Live Auto-Fix Cycle (Auto-Demo Loop)
+    useEffect(() => {
+        if (!autoPlayEnabled) return;
+
+        autoPlayTimerRef.current = setInterval(() => {
+            // Trigger laser scan & auto-fix
+            setIsFixingAnim(true);
+            setTimeout(() => {
+                setIsFixingAnim(false);
+                setIsHeroFixed(true);
+                setShowFixBanner(true);
+
+                // Hold fixed state, then rotate to next file
+                setTimeout(() => {
+                    setShowFixBanner(false);
+                    setIsHeroFixed(false);
+                    setActiveFile(prev => {
+                        const idx = FILE_KEYS.indexOf(prev);
+                        return FILE_KEYS[(idx + 1) % FILE_KEYS.length];
+                    });
+                }, 3000);
+            }, 600);
+        }, 6500);
+
+        return () => {
+            if (autoPlayTimerRef.current) clearInterval(autoPlayTimerRef.current);
+        };
+    }, [autoPlayEnabled]);
+
+    // Manual Trigger Fix in Hero IDE
     const handleApplyHeroFix = () => {
+        setAutoPlayEnabled(false); // Pause auto-play when user interacts
         if (isHeroFixed) {
-            // Revert to vulnerable for demo replay
             setIsHeroFixed(false);
             setShowFixBanner(false);
             return;
@@ -184,21 +225,22 @@ export default function Landing({ onGetStarted }: LandingProps) {
         }, 400);
     };
 
-    // Trigger CLI terminal rescan
-    const handleCliRescan = () => {
-        if (cliScanning) return;
-        setCliScanning(true);
-        setTimeout(() => {
-            setCliScanning(false);
-            setCliScanCount(c => c + 1);
-        }, 800);
-    };
-
     return (
         <div className={`crb-landing crb-theme-${theme}`}>
             {/* Ambient Animated Glow Blobs */}
             <div className="crb-ambient-blob crb-blob-1"></div>
             <div className="crb-ambient-blob crb-blob-2"></div>
+
+            {/* Floating Ambient Badges */}
+            <div className="crb-floating-chip chip-1">
+                <span>🛡️</span> SQL Injection: 0
+            </div>
+            <div className="crb-floating-chip chip-2">
+                <span>⚡</span> Review time: &lt;1.5s
+            </div>
+            <div className="crb-floating-chip chip-3">
+                <span>✓</span> CI/CD Auto-Fix Ready
+            </div>
 
             {/* Top Navigation Bar */}
             <header className="crb-navbar">
@@ -231,29 +273,35 @@ export default function Landing({ onGetStarted }: LandingProps) {
                             Get started
                         </button>
 
-                        {/* Interactive Dark / Light Toggle */}
+                        {/* Interactive Dark / Light Toggle Switch */}
                         <button
                             className="crb-theme-btn"
                             onClick={toggleTheme}
                             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                            title={`Click to switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                            title={`Current mode: ${theme.toUpperCase()}. Click to switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                         >
                             {theme === 'dark' ? (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="5" />
-                                    <line x1="12" y1="1" x2="12" y2="3" />
-                                    <line x1="12" y1="21" x2="12" y2="23" />
-                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                                    <line x1="1" y1="12" x2="3" y2="12" />
-                                    <line x1="21" y1="12" x2="23" y2="12" />
-                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                                </svg>
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="5" />
+                                        <line x1="12" y1="1" x2="12" y2="3" />
+                                        <line x1="12" y1="21" x2="12" y2="23" />
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                        <line x1="1" y1="12" x2="3" y2="12" />
+                                        <line x1="21" y1="12" x2="23" y2="12" />
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                                    </svg>
+                                    <span className="crb-theme-label">Dark</span>
+                                </>
                             ) : (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                                </svg>
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                                    </svg>
+                                    <span className="crb-theme-label">Light</span>
+                                </>
                             )}
                         </button>
                     </div>
@@ -304,45 +352,50 @@ export default function Landing({ onGetStarted }: LandingProps) {
                         <span>Open source friendly</span>
                     </div>
 
-                    {/* Interactive CLI Box */}
-                    <div className="crb-cli-box" onClick={handleCliRescan} title="Click to re-run CLI simulation">
-                        <div className={`crb-cli-dot ${cliScanning ? 'scanning' : ''}`}></div>
+                    {/* Animated CLI Box with live progress steps */}
+                    <div className="crb-cli-box" onClick={() => setTerminalStep((terminalStep + 1) % 4)} title="Click to cycle CLI demo">
+                        <div className="crb-cli-dot scanning"></div>
                         <div className="crb-cli-content">
                             <div className="crb-cli-cmd">
-                                <span className="crb-cli-prompt">&gt;</span> npx code-review-bot
+                                <span className="crb-cli-prompt">&gt;</span> npx code-review-bot analyze
                                 <span className="crb-cursor"></span>
                             </div>
-                            {cliScanning ? (
-                                <div className="crb-cli-scanning-text">
-                                    <span className="crb-spinner"></span> Scanning AST &amp; LLM reasoning engine...
+
+                            {terminalStep === 0 && (
+                                <div className="crb-cli-sub animate-fade-in">
+                                    [1/3] Parsing Abstract Syntax Tree...
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="crb-cli-sub">
-                                        Scanning your code... {cliScanCount > 0 ? `(Scan #${cliScanCount + 1})` : ''}
-                                    </div>
-                                    <div className="crb-cli-results">
-                                        Found 3 issues (<span className="crb-critical-text">2 critical</span>, <span className="crb-medium-text">1 medium</span>)
-                                    </div>
-                                </>
+                            )}
+                            {terminalStep === 1 && (
+                                <div className="crb-cli-scanning-text animate-fade-in">
+                                    <span className="crb-spinner"></span> Deep reasoning with Groq AI engine...
+                                </div>
+                            )}
+                            {terminalStep >= 2 && (
+                                <div className="crb-cli-results animate-fade-in">
+                                    Found 3 issues (<span className="crb-critical-text">2 critical</span>, <span className="crb-medium-text">1 medium</span>)
+                                </div>
+                            )}
+                            {terminalStep === 3 && (
+                                <div className="crb-cli-autofix-msg animate-fade-in">
+                                    ⚡ 1-click auto-fix patch ready for deployment
+                                </div>
                             )}
                         </div>
-                        <button className="crb-cli-replay-btn" aria-label="Replay scan">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                            </svg>
-                        </button>
+                        <div className="crb-cli-step-badge">
+                            {terminalStep + 1}/4
+                        </div>
                     </div>
                 </div>
 
-                {/* HERO RIGHT: Interactive IDE PR Mockup with Live Fix Animation */}
+                {/* HERO RIGHT: Interactive IDE Mockup with Live Fix Animation */}
                 <div className="crb-hero-right">
                     <div className="crb-ide-window">
                         {/* Notification toast when fix applied */}
                         {showFixBanner && (
                             <div className="crb-fix-toast animate-slide-down">
                                 <span className="crb-toast-sparkle">✨</span>
-                                <strong>Vulnerability Patched:</strong> Parameterized query applied to Line 2!
+                                <strong>Vulnerability Patched:</strong> Secure fix applied to {currentDemo.name}!
                             </div>
                         )}
 
@@ -368,7 +421,16 @@ export default function Landing({ onGetStarted }: LandingProps) {
                                 </span>
                                 <span className="crb-ide-dots">···</span>
                             </div>
+
                             <div className="crb-ide-nav-right">
+                                <button
+                                    className={`crb-autoplay-pill ${autoPlayEnabled ? 'active' : ''}`}
+                                    onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
+                                    title="Toggle automatic live demo cycle"
+                                >
+                                    <span className="crb-live-dot"></span>
+                                    {autoPlayEnabled ? 'Auto-Demo ON' : 'Paused'}
+                                </button>
                                 <button
                                     className={`crb-ide-review-btn ${isHeroFixed ? 'fixed' : ''}`}
                                     onClick={handleApplyHeroFix}
@@ -392,11 +454,12 @@ export default function Landing({ onGetStarted }: LandingProps) {
                                         <polyline points="6 9 12 15 18 9" />
                                     </svg>
                                 </div>
-                                {(['processData.ts', 'auth.ts', 'utils.ts', 'routes.ts'] as FileKey[]).map(file => (
+                                {FILE_KEYS.map(file => (
                                     <div
                                         key={file}
                                         className={`crb-file-item ${activeFile === file ? 'active' : ''}`}
                                         onClick={() => {
+                                            setAutoPlayEnabled(false);
                                             setActiveFile(file);
                                             setIsHeroFixed(false);
                                         }}
@@ -418,7 +481,7 @@ export default function Landing({ onGetStarted }: LandingProps) {
                             <div className="crb-ide-editor">
                                 <div className="crb-editor-tab">
                                     <span>{currentDemo.name}</span>
-                                    {isHeroFixed && <span className="crb-tab-fixed-tag">✓ Fixed</span>}
+                                    {isHeroFixed && <span className="crb-tab-fixed-tag">✓ Patched</span>}
                                 </div>
 
                                 {/* Code Lines Display with animated scanning laser */}
@@ -548,10 +611,10 @@ export default function Landing({ onGetStarted }: LandingProps) {
                                         <div className="crb-issue-body animate-fade-in">
                                             <div className="crb-explanation-card">
                                                 <h4>📖 Code Breakdown for {activeFile}</h4>
-                                                <p>This module queries user records from PostgreSQL. Direct string concatenation bypasses compiler safety checks and introduces OWASP Top 10 vulnerabilities.</p>
+                                                <p>This module queries user records from the database. Direct concatenation bypasses compiler checks and introduces OWASP Top 10 vulnerabilities.</p>
                                                 <div className="crb-metric-row">
                                                     <span>Complexity: <strong>Low</strong></span>
-                                                    <span>Risk: <strong style={{ color: '#ef4444' }}>High (CWE-89)</strong></span>
+                                                    <span>Risk: <strong style={{ color: '#ef4444' }}>High ({currentDemo.issueSeverity})</strong></span>
                                                     <span>Fix Confidence: <strong style={{ color: '#10b981' }}>99%</strong></span>
                                                 </div>
                                             </div>
@@ -564,7 +627,7 @@ export default function Landing({ onGetStarted }: LandingProps) {
                                             <div className="crb-security-card">
                                                 <div className="crb-sec-header">
                                                     <span className="crb-sec-score">CVSS 9.8</span>
-                                                    <span>CWE-89: Improper Neutralization of Special Elements</span>
+                                                    <span>{currentDemo.issueTitle}</span>
                                                 </div>
                                                 <p>Attack vectors: Remote unauthenticated user injection. Recommended remediation: Parameterized prepared statements.</p>
                                             </div>
@@ -730,7 +793,7 @@ export default function Landing({ onGetStarted }: LandingProps) {
 
                                 <p className="crb-panel-desc">
                                     {isDiffFixed
-                                        ? 'Loop boundary correctly changed from <= to <, preventing out-of-bounds access.'
+                                        ? 'Loop boundary correctly changed from <= to <, preventing out-of-bounds undefined index access.'
                                         : 'The loop uses <= which accesses items[items.length] (undefined), causing a runtime TypeError.'}
                                 </p>
 

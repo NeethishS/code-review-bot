@@ -33,9 +33,15 @@ interface AuthUser {
 
 const TOKEN_KEY = 'crb_token';
 const USER_KEY = 'crb_user';
-
 function App() {
-    const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+    const [currentPage, setCurrentPage] = useState<Page>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const p = params.get('page');
+        if (p === 'landing' || p === 'login' || p === 'dashboard') return p as Page;
+        const rawToken = localStorage.getItem(TOKEN_KEY);
+        const rawUser = localStorage.getItem(USER_KEY);
+        return (rawToken && rawUser) ? 'dashboard' : 'landing';
+    });
     const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [preloadedCode, setPreloadedCode] = useState<PreloadedCode | null>(null);
@@ -124,9 +130,14 @@ function App() {
 
 
 
-    // ── If not logged in, show Landing page ───────────────────
+    // ── If currentPage is 'landing', always show Landing page ──
+    if (currentPage === 'landing') {
+        return <Landing onGetStarted={() => setCurrentPage(isLoggedIn ? 'dashboard' : 'login')} />;
+    }
+
+    // ── If not logged in, show Landing page or Login ──────────
     if (!isLoggedIn) {
-        if (currentPage === 'landing' || currentPage === 'dashboard') {
+        if (currentPage === 'dashboard') {
             return <Landing onGetStarted={() => setCurrentPage('login')} />;
         }
         return <Login onLoginSuccess={handleLoginSuccess} onBackToLanding={() => setCurrentPage('landing')} />;
