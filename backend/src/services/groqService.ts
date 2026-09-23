@@ -212,6 +212,61 @@ class GroqService {
     }
 
     /**
+     * Clean and repair JSON string that may have unescaped control characters or trailing commas
+     */
+    private repairJsonString(raw: string): string {
+        if (!raw || typeof raw !== 'string') return '';
+
+        // Strip trailing commas before } or ]
+        let cleaned = raw.replace(/,\s*([}\]])/g, '$1');
+
+        // Escape unescaped control characters (literal newlines, tabs, carriage returns) inside string literals
+        let insideString = false;
+        let escaped = false;
+        let result = '';
+
+        for (let i = 0; i < cleaned.length; i++) {
+            const char = cleaned[i];
+
+            if (escaped) {
+                result += char;
+                escaped = false;
+                continue;
+            }
+
+            if (char === '\\') {
+                result += char;
+                escaped = true;
+                continue;
+            }
+
+            if (char === '"') {
+                insideString = !insideString;
+                result += char;
+                continue;
+            }
+
+            if (insideString) {
+                if (char === '\n') {
+                    result += '\\n';
+                } else if (char === '\r') {
+                    result += '\\r';
+                } else if (char === '\t') {
+                    result += '\\t';
+                } else if (char.charCodeAt(0) < 32) {
+                    result += ' ';
+                } else {
+                    result += char;
+                }
+            } else {
+                result += char;
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Robust parser for LLM JSON output
      */
     parseJsonResponse(response: string): any {
@@ -229,8 +284,12 @@ class GroqService {
         // 2. Try markdown fenced code block ```json ... ``` or ``` ... ```
         const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
         if (codeBlockMatch) {
+            const blockContent = codeBlockMatch[1].trim();
             try {
-                return JSON.parse(codeBlockMatch[1].trim());
+                return JSON.parse(blockContent);
+            } catch (e) {}
+            try {
+                return JSON.parse(this.repairJsonString(blockContent));
             } catch (e) {}
         }
 
@@ -242,6 +301,9 @@ class GroqService {
             try {
                 return JSON.parse(potentialJson);
             } catch (e) {}
+            try {
+                return JSON.parse(this.repairJsonString(potentialJson));
+            } catch (e) {}
         }
 
         // 4. Try to extract outermost JSON array [ ... ]
@@ -252,7 +314,15 @@ class GroqService {
             try {
                 return JSON.parse(potentialJson);
             } catch (e) {}
+            try {
+                return JSON.parse(this.repairJsonString(potentialJson));
+            } catch (e) {}
         }
+
+        // 5. Try repair on whole trimmed text
+        try {
+            return JSON.parse(this.repairJsonString(trimmed));
+        } catch (e) {}
 
         console.warn('⚠️ Could not parse JSON response cleanly, falling back to raw representation');
         return { _raw: response, summary: response };

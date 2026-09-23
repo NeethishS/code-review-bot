@@ -92,6 +92,30 @@
     cursor: not-allowed;
 }
 
+.autofix-btn-apply {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.autofix-btn-apply:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.autofix-btn-apply.applied {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
 .autofix-textarea {
     flex: 1;
     padding: 16px;
@@ -192,6 +216,52 @@
     border-bottom: 1px solid var(--border, #2a2a3e);
     background: var(--bg-secondary, #1e1e2e);
     font-weight: 600;
+}
+
+.autofix-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.autofix-apply-btn {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    border-radius: 4px;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.autofix-apply-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+}
+
+.autofix-apply-btn.applied {
+    background: #047857;
+    border-color: #34d399;
+}
+
+.autofix-apply-btn-sm {
+    padding: 3px 10px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.autofix-apply-btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
 }
 
 .autofix-copy-btn {

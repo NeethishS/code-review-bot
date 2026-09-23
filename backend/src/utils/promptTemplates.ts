@@ -325,11 +325,11 @@ Respond ONLY with valid JSON:
 
     autoFix: {
         system: `You are an expert code fixer. Analyze code and provide a fixed version.
-Return ONLY valid JSON with this exact structure:
+IMPORTANT: You MUST respond ONLY with a single valid JSON object. Ensure all strings are properly escaped (especially quotes and newlines in code). Do not output markdown fences or explanatory text outside the JSON.
 {
   "fixedCode": "the complete fixed code here",
-  "issues": ["issue 1", "issue 2", ...],
-  "fixes": ["fix 1", "fix 2", ...],
+  "issues": ["issue 1", "issue 2"],
+  "fixes": ["fix 1", "fix 2"],
   "explanation": "brief explanation of changes"
 }`,
         user: (code: string, language: string) =>

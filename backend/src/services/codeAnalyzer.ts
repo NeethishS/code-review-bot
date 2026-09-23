@@ -311,6 +311,111 @@ class CodeAnalyzer {
     }
 
     /**
+     * Resilient Auto-Fix parser that guarantees clean fixedCode output
+     */
+    private parseAutoFixResult(rawResponse: string, originalCode: string): any {
+        // 1. Try groqService.parseJsonResponse
+        const parsed = groqService.parseJsonResponse(rawResponse);
+
+        if (parsed && typeof parsed === 'object' && typeof parsed.fixedCode === 'string' && parsed.fixedCode.trim().length > 0) {
+            let cleanCode = parsed.fixedCode.trim();
+            // Verify fixedCode isn't accidentally a dumped raw JSON object
+            if (cleanCode.startsWith('{') && cleanCode.includes('"fixedCode"')) {
+                const nested = this.extractAutoFixFields(cleanCode, originalCode);
+                if (nested.fixedCode && nested.fixedCode !== cleanCode) {
+                    return nested;
+                }
+            }
+
+            return {
+                originalCode,
+                fixedCode: cleanCode,
+                issues: Array.isArray(parsed.issues) && parsed.issues.length > 0 ? parsed.issues : ['Code quality and security issues detected.'],
+                fixes: Array.isArray(parsed.fixes) && parsed.fixes.length > 0 ? parsed.fixes : ['Automated fixes and refactoring applied.'],
+                explanation: typeof parsed.explanation === 'string' && parsed.explanation.trim().length > 0 
+                    ? parsed.explanation 
+                    : 'The code has been refactored to resolve detected issues and improve maintainability.'
+            };
+        }
+
+        // 2. Field-level fallback extraction from raw text
+        return this.extractAutoFixFields(rawResponse, originalCode);
+    }
+
+    /**
+     * Fallback extractor using regex and code block detection
+     */
+    private extractAutoFixFields(raw: string, originalCode: string): any {
+        let fixedCode: string | null = null;
+        let issues: string[] = [];
+        let fixes: string[] = [];
+        let explanation = '';
+
+        // Extract fixedCode from "fixedCode": "..."
+        const fixedCodeMatch = raw.match(/"fixedCode"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"(?:issues|fixes|explanation)"|\s*})/);
+        if (fixedCodeMatch) {
+            fixedCode = fixedCodeMatch[1]
+                .replace(/\\n/g, '\n')
+                .replace(/\\r/g, '\r')
+                .replace(/\\t/g, '\t')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\');
+        }
+
+        // If no fixedCode via regex, check if LLM returned a markdown code block ```language ... ```
+        if (!fixedCode || fixedCode.trim().length === 0) {
+            const codeBlock = raw.match(/```(?:\w+)?\s*([\s\S]*?)\s*```/);
+            if (codeBlock && codeBlock[1].trim().length > 0) {
+                fixedCode = codeBlock[1].trim();
+            }
+        }
+
+        // Extract issues array
+        const issuesMatch = raw.match(/"issues"\s*:\s*\[([\s\S]*?)\]/);
+        if (issuesMatch) {
+            issues = issuesMatch[1]
+                .split('\n')
+                .map(s => s.trim().replace(/^["']/, '').replace(/["'],?$/, '').replace(/\\"/g, '"'))
+                .filter(s => s.length > 0);
+        }
+
+        // Extract fixes array
+        const fixesMatch = raw.match(/"fixes"\s*:\s*\[([\s\S]*?)\]/);
+        if (fixesMatch) {
+            fixes = fixesMatch[1]
+                .split('\n')
+                .map(s => s.trim().replace(/^["']/, '').replace(/["'],?$/, '').replace(/\\"/g, '"'))
+                .filter(s => s.length > 0);
+        }
+
+        // Extract explanation
+        const expMatch = raw.match(/"explanation"\s*:\s*"([\s\S]*?)"(?=\s*})/);
+        if (expMatch) {
+            explanation = expMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        }
+
+        if (fixedCode && fixedCode.trim().length > 0 && !fixedCode.trim().startsWith('{"fixedCode"')) {
+            return {
+                originalCode,
+                fixedCode: fixedCode.trim(),
+                issues: issues.length > 0 ? issues : ['Identified code issues and security vulnerabilities.'],
+                fixes: fixes.length > 0 ? fixes : ['Applied automated security fixes and refactoring.'],
+                explanation: explanation || 'Code refactored and updated.'
+            };
+        }
+
+        // Ultimate safety: never dump raw JSON text as code
+        console.warn('⚠️ Auto-fix completely failed to extract clean code');
+        return {
+            originalCode,
+            fixedCode: originalCode,
+            issues: ['Could not extract clean code from AI response. Please try again.'],
+            fixes: ['No automatic modifications applied.'],
+            explanation: 'The AI model response could not be parsed into a clean code format.'
+        };
+    }
+
+    /**
      * Auto-Fix — AI generates fixed code with diff
      */
     async autoFix(code: string, language: string, customApiKey?: string): Promise<CodeAnalysisResponse> {
@@ -323,27 +428,7 @@ class CodeAnalyzer {
 
         if (!result.success) return { success: false, error: result.error, analysisType: 'auto-fix' };
 
-        const parsedData = groqService.parseJsonResponse(result.data);
-        
-        if (!parsedData || typeof parsedData !== 'object' || !parsedData.fixedCode) {
-            console.log('⚠️ Auto-fix parsing failed or missing fixedCode, using fallback');
-            return {
-                success: true,
-                data: {
-                    originalCode: code,
-                    fixedCode: result.data || code,
-                    issues: ['The AI provided a response that could not be parsed into a structured format.'],
-                    fixes: ['AI provided improvements in a raw format.'],
-                    explanation: 'Manual review of the AI response is recommended as the structured parsing failed.'
-                },
-                analysisType: 'auto-fix',
-                tokensUsed: result.tokensUsed,
-                cost: result.cost
-            };
-        }
-
-        // Ensure original code is included
-        parsedData.originalCode = code;
+        const parsedData = this.parseAutoFixResult(result.data, code);
 
         return { 
             success: true, 

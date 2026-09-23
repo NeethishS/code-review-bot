@@ -50,6 +50,29 @@ function generateDiff(original: string, fixed: string): DiffLine[] {
     return diff;
 }
 
+function cleanFixedCode(fixedCode: string): string {
+    if (!fixedCode) return '';
+    const trimmed = fixedCode.trim();
+    if (trimmed.startsWith('{') && trimmed.includes('"fixedCode"')) {
+        const match = trimmed.match(/"fixedCode"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"(?:issues|fixes|explanation)"|\s*})/);
+        if (match) {
+            return match[1]
+                .replace(/\\n/g, '\n')
+                .replace(/\\r/g, '\r')
+                .replace(/\\t/g, '\t')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\');
+        }
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.fixedCode && typeof parsed.fixedCode === 'string') {
+                return parsed.fixedCode;
+            }
+        } catch {}
+    }
+    return fixedCode;
+}
+
 export default function AutoFix() {
     const [code, setCode] = useState('');
     const [language, setLanguage] = useState('javascript');
@@ -58,6 +81,7 @@ export default function AutoFix() {
     const [diff, setDiff] = useState<DiffLine[]>([]);
     const [error, setError] = useState('');
     const [viewMode, setViewMode] = useState<'diff' | 'side-by-side' | 'fixed'>('diff');
+    const [applied, setApplied] = useState(false);
 
     const handleAnalyze = async () => {
         if (!code.trim()) {
@@ -69,6 +93,7 @@ export default function AutoFix() {
         setError('');
         setResult(null);
         setDiff([]);
+        setApplied(false);
 
         try {
             const response = await apiService.post('/ai/auto-fix', {
@@ -78,6 +103,7 @@ export default function AutoFix() {
 
             if (response.success) {
                 const data = response.data as AutoFixResult;
+                data.fixedCode = cleanFixedCode(data.fixedCode);
                 setResult(data);
                 setDiff(generateDiff(data.originalCode, data.fixedCode));
             } else {
@@ -88,6 +114,13 @@ export default function AutoFix() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleApplyFix = () => {
+        if (!result?.fixedCode) return;
+        setCode(result.fixedCode);
+        setApplied(true);
+        setTimeout(() => setApplied(false), 3000);
     };
 
     const copyToClipboard = (text: string) => {
@@ -123,6 +156,15 @@ export default function AutoFix() {
                         >
                             {loading ? '⏳ Fixing...' : '🔧 Auto-Fix'}
                         </button>
+                        {result && (
+                            <button
+                                onClick={handleApplyFix}
+                                className={`autofix-btn-apply ${applied ? 'applied' : ''}`}
+                                title="Apply fixed code directly into the editor"
+                            >
+                                {applied ? '✅ Applied!' : '⚡ Apply Fix'}
+                            </button>
+                        )}
                     </div>
 
                     <textarea
@@ -172,16 +214,24 @@ export default function AutoFix() {
                                 <div className="autofix-diff-view">
                                     <div className="autofix-diff-header">
                                         <span>📝 Changes</span>
-                                        <button
-                                            className="autofix-copy-btn"
-                                            onClick={() => copyToClipboard(result.fixedCode)}
-                                        >
-                                            📋 Copy Fixed
-                                        </button>
+                                        <div className="autofix-header-actions">
+                                            <button
+                                                className={`autofix-apply-btn ${applied ? 'applied' : ''}`}
+                                                onClick={handleApplyFix}
+                                            >
+                                                {applied ? '✅ Applied to Editor!' : '⚡ Apply Fix to Editor'}
+                                            </button>
+                                            <button
+                                                className="autofix-copy-btn"
+                                                onClick={() => copyToClipboard(result.fixedCode)}
+                                            >
+                                                📋 Copy Fixed
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="autofix-diff">
                                         {diff.map((line, idx) => (
-                                            <div
+                                             <div
                                                 key={idx}
                                                 className={`autofix-diff-line autofix-diff-${line.type}`}
                                             >
@@ -203,7 +253,15 @@ export default function AutoFix() {
                                         <pre className="autofix-code">{result.originalCode}</pre>
                                     </div>
                                     <div className="autofix-side">
-                                        <div className="autofix-side-header">✅ Fixed</div>
+                                        <div className="autofix-side-header">
+                                            <span>✅ Fixed</span>
+                                            <button
+                                                className={`autofix-apply-btn-sm ${applied ? 'applied' : ''}`}
+                                                onClick={handleApplyFix}
+                                            >
+                                                {applied ? '✅ Applied' : '⚡ Apply'}
+                                            </button>
+                                        </div>
                                         <pre className="autofix-code">{result.fixedCode}</pre>
                                     </div>
                                 </div>
@@ -214,12 +272,20 @@ export default function AutoFix() {
                                 <div className="autofix-fixed-view">
                                     <div className="autofix-fixed-header">
                                         <span>✅ Fixed Code</span>
-                                        <button
-                                            className="autofix-copy-btn"
-                                            onClick={() => copyToClipboard(result.fixedCode)}
-                                        >
-                                            📋 Copy
-                                        </button>
+                                        <div className="autofix-header-actions">
+                                            <button
+                                                className={`autofix-apply-btn ${applied ? 'applied' : ''}`}
+                                                onClick={handleApplyFix}
+                                            >
+                                                {applied ? '✅ Applied to Editor!' : '⚡ Apply Fix to Editor'}
+                                            </button>
+                                            <button
+                                                className="autofix-copy-btn"
+                                                onClick={() => copyToClipboard(result.fixedCode)}
+                                            >
+                                                📋 Copy
+                                            </button>
+                                        </div>
                                     </div>
                                     <pre className="autofix-code">{result.fixedCode}</pre>
                                 </div>
