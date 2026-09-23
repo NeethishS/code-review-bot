@@ -23,7 +23,7 @@ function Landing({ onGetStarted }: LandingProps) {
             <section className="hero-section">
                 <div className="hero-content">
                     <div className="hero-badge animate-float">
-                        <span className="sparkle">✨</span> Powered by Groq Llama 3
+                        <span className="sparkle">✨</span> Powered by Groq Ultra-Fast AI
                     </div>
                     <h1 className="hero-title">
                         Ship <span className="highlight">Perfect</span> Code, <br />

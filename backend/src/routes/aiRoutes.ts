@@ -367,4 +367,27 @@ router.post('/auto-fix', requireAuth, async (req: AuthRequest, res: Response) =>
     }
 });
 
+/** POST /api/ai/static-analysis — Instant static AST & pattern analysis (no LLM, 0 cost) */
+router.post('/static-analysis', requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+        const { code, language } = req.body;
+        if (!code || !language) return res.status(400).json({ success: false, error: 'Missing required fields: code, language' });
+        
+        const result = await codeAnalyzer.analyze({
+            code,
+            language,
+            analysisType: 'static-analysis',
+        });
+
+        if (req.userId) {
+            await saveReview(req.userId, language, 'static-analysis', code, result.data, 0, 0, result.success);
+        }
+
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;
+

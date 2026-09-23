@@ -47,12 +47,12 @@ app.get('/health', async (req: Request, res: Response) => {
         },
         cache: cacheStats,
         optimization: {
-            status: 'CREDIT SAVING MODE',
+            status: 'HIGH PERFORMANCE & COST EFFICIENT',
             features: [
-                'Fast 8B model (90% token savings)',
+                'Fast, low-cost Qwen & GPT-OSS models',
                 'Response caching enabled',
-                'Reduced max tokens (3000)',
-                'Conservative rate limiting (5/min)',
+                'Automatic backup key failover',
+                'Resilient rate limiting (30/min)',
             ],
         },
     });

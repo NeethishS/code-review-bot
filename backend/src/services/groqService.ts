@@ -26,19 +26,18 @@ class GroqService {
     private lastResetTime: number = Date.now();
 
     constructor() {
-        
         this.backupConfig = {
             apiKey: process.env.BACKUP_GROQ_API_KEY || '',
-            model: process.env.BACKUP_GROQ_MODEL || 'llama-3.1-8b-instant',
-            maxTokens: parseInt(process.env.GROQ_MAX_TOKENS || '8000'),
-            temperature: parseFloat(process.env.GROQ_TEMPERATURE || '0.1'),
+            model: process.env.BACKUP_GROQ_MODEL || 'qwen/qwen3.8-27b',
+            maxTokens: parseInt(process.env.GROQ_MAX_TOKENS || '2500'),
+            temperature: parseFloat(process.env.GROQ_TEMPERATURE || '0.05'),
         };
 
         this.config = {
             apiKey: process.env.GROQ_API_KEY || '',
-            model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-            maxTokens: parseInt(process.env.GROQ_MAX_TOKENS || '8000'),
-            temperature: parseFloat(process.env.GROQ_TEMPERATURE || '0.1'),
+            model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+            maxTokens: parseInt(process.env.GROQ_MAX_TOKENS || '2500'),
+            temperature: parseFloat(process.env.GROQ_TEMPERATURE || '0.05'),
         };
 
         if (!this.config.apiKey) {
@@ -65,7 +64,7 @@ class GroqService {
             this.lastResetTime = now;
         }
 
-        const maxRequests = parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '10');
+        const maxRequests = parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '30');
 
         if (this.requestCount >= maxRequests) {
             return false;
@@ -86,12 +85,15 @@ class GroqService {
             maxTokens?: number;
             model?: string;
             customApiKey?: string;
+            jsonMode?: boolean;
         }
     ): Promise<AnalysisResult> {
+        const isJson = options?.jsonMode ?? systemPrompt.includes('JSON');
+
         const execute = async (apiKey: string, model: string) => {
             const tempClient = new Groq({ apiKey });
             const startTime = Date.now();
-            const completion = await tempClient.chat.completions.create({
+            const requestPayload: any = {
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },
@@ -101,13 +103,49 @@ class GroqService {
                 max_tokens: options?.maxTokens || this.config.maxTokens,
                 top_p: 1,
                 stream: false,
-            });
-            const endTime = Date.now();
-            return { completion, responseTime: endTime - startTime };
+            };
+
+            if (isJson) {
+                requestPayload.response_format = { type: 'json_object' };
+            }
+
+            try {
+                const completion = await tempClient.chat.completions.create(requestPayload);
+                const endTime = Date.now();
+                return { completion, responseTime: endTime - startTime };
+            } catch (err: any) {
+                // If json_object response_format failed (e.g. unsupported, json_validate_failed, 400), retry once without it
+                if (isJson && (
+                    err?.message?.includes('response_format') ||
+                    err?.message?.includes('validate JSON') ||
+                    err?.error?.code === 'json_validate_failed' ||
+                    err?.status === 400
+                )) {
+                    console.warn('⚠️ json_object validation failed on Groq, retrying without strict schema...');
+                    delete requestPayload.response_format;
+                    const completion = await tempClient.chat.completions.create(requestPayload);
+                    const endTime = Date.now();
+                    return { completion, responseTime: endTime - startTime };
+                }
+                throw err;
+            }
         };
 
         try {
             if (!this.checkRateLimit()) {
+                // If system limit reached, try backup key before rejecting
+                if (this.backupConfig.apiKey) {
+                    console.warn('⚠️ Local rate threshold reached, routing to Backup Key...');
+                    const result = await execute(this.backupConfig.apiKey, this.backupConfig.model);
+                    const content = result.completion.choices[0]?.message?.content || '';
+                    const tokensUsed = result.completion.usage?.total_tokens || 0;
+                    return {
+                        success: true,
+                        data: content,
+                        tokensUsed,
+                        cost: this.calculateCost(tokensUsed),
+                    };
+                }
                 return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' };
             }
 
@@ -127,8 +165,8 @@ class GroqService {
                     result = await execute(this.config.apiKey, options?.model || this.config.model);
                     console.log(`✅ Groq API Response via System Key`);
                 } catch (systemErr: any) {
-                    if (systemErr.status === 429 && this.backupConfig.apiKey) {
-                        console.warn('⚠️ System Key Rate Limit (429), falling back to Backup Key...');
+                    if ((systemErr.status === 429 || systemErr.status === 503) && this.backupConfig.apiKey) {
+                        console.warn('⚠️ System Key issue (status ' + systemErr.status + '), falling back to Backup Key...');
                         try {
                             result = await execute(this.backupConfig.apiKey, this.backupConfig.model);
                             console.log(`✅ Groq API Response via Backup Key`);
@@ -158,55 +196,78 @@ class GroqService {
             if (error.status === 401) {
                 return { success: false, error: 'Invalid Groq API key. Please check your configuration.' };
             }
+            if (error.status === 404) {
+                return { success: false, error: `Model not found or deprecated: ${error.message}` };
+            }
             return { success: false, error: error.message || 'Failed to get response from Groq API' };
         }
     }
 
     /**
-     * Calculate approximate cost (Groq is very cheap/free for many models)
+     * Calculate approximate cost for Groq inference (extremely cost effective)
      */
     private calculateCost(tokens: number): number {
         // Groq pricing is extremely low, approximately $0.00001 per 1K tokens
-        // This is just for tracking purposes
         return (tokens / 1000) * 0.00001;
     }
 
     /**
-     * Parse JSON response from LLM
+     * Robust parser for LLM JSON output
      */
     parseJsonResponse(response: string): any {
-        try {
-            // Try to extract JSON from markdown code blocks
-            const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[1]);
-            }
-
-            // Try to find any JSON object in the response
-            const jsonObjectMatch = response.match(/\{[\s\S]*\}/);
-            if (jsonObjectMatch) {
-                return JSON.parse(jsonObjectMatch[0]);
-            }
-
-            // Try to parse directly
-            return JSON.parse(response);
-        } catch (error) {
-            console.error('Failed to parse JSON response, returning raw string');
-            // Return the raw string so the frontend can still display it
-            return { _raw: response, summary: response };
+        if (!response || typeof response !== 'string') {
+            return null;
         }
+
+        const trimmed = response.trim();
+
+        // 1. Try direct parse
+        try {
+            return JSON.parse(trimmed);
+        } catch (e) {}
+
+        // 2. Try markdown fenced code block ```json ... ``` or ``` ... ```
+        const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        if (codeBlockMatch) {
+            try {
+                return JSON.parse(codeBlockMatch[1].trim());
+            } catch (e) {}
+        }
+
+        // 3. Try to extract outermost JSON object { ... }
+        const firstBrace = trimmed.indexOf('{');
+        const lastBrace = trimmed.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            const potentialJson = trimmed.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(potentialJson);
+            } catch (e) {}
+        }
+
+        // 4. Try to extract outermost JSON array [ ... ]
+        const firstBracket = trimmed.indexOf('[');
+        const lastBracket = trimmed.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket > firstBracket) {
+            const potentialJson = trimmed.slice(firstBracket, lastBracket + 1);
+            try {
+                return JSON.parse(potentialJson);
+            } catch (e) {}
+        }
+
+        console.warn('⚠️ Could not parse JSON response cleanly, falling back to raw representation');
+        return { _raw: response, summary: response };
     }
 
     /**
-     * Get available models
+     * Get available active Groq models
      */
     getAvailableModels(): string[] {
         return [
-            'llama-3.3-70b-versatile',
-            'llama-3.1-70b-versatile',
-            'llama-3.1-8b-instant',
-            'mixtral-8x7b-32768',
-            'gemma2-9b-it',
+            'qwen/qwen3.8-27b',
+            'openai/gpt-oss-20b',
+            'openai/gpt-oss-120b',
+            'groq/compound-mini',
+            'groq/compound',
         ];
     }
 
@@ -225,9 +286,9 @@ class GroqService {
             const result = await this.sendPrompt(
                 'You are a helpful assistant.',
                 'Reply with just the word "OK" if you can read this.',
-                { maxTokens: 10 }
+                { maxTokens: 100, jsonMode: false }
             );
-            return result.success && result.data?.includes('OK');
+            return result.success && (result.data?.toLowerCase().includes('ok') || result.data?.length > 0);
         } catch (error) {
             return false;
         }

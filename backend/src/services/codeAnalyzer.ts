@@ -1,11 +1,12 @@
 import groqService from './groqService';
 import promptTemplates from '../utils/promptTemplates';
 import responseCache from '../utils/responseCache';
+import staticAnalyzer, { StaticAnalysisResult } from './staticAnalyzer';
 
 export interface CodeAnalysisRequest {
     code: string;
     language: string;
-    analysisType: 'code-smell' | 'security' | 'performance' | 'complexity' | 'duplicates' | 'test-generation' | 'full-review' | 'pattern-analysis' | 'edge-cases' | 'before-after';
+    analysisType: 'code-smell' | 'security' | 'performance' | 'complexity' | 'duplicates' | 'test-generation' | 'full-review' | 'pattern-analysis' | 'edge-cases' | 'before-after' | 'static-analysis';
     framework?: string;
     customApiKey?: string;
 }
@@ -17,6 +18,7 @@ export interface CodeAnalysisResponse {
     tokensUsed?: number;
     cost?: number;
     analysisType: string;
+    staticAnalysis?: StaticAnalysisResult;
 }
 
 class CodeAnalyzer {
@@ -38,9 +40,13 @@ class CodeAnalyzer {
             };
         }
 
+        // Run pre-analysis static inspection
+        const staticFacts = staticAnalyzer.analyze(code, language);
+        const staticPromptContext = staticAnalyzer.formatForPrompt(staticFacts);
+
         const result = await groqService.sendPrompt(
             promptTemplates.codeSmell.system,
-            promptTemplates.codeSmell.user(code, language),
+            promptTemplates.codeSmell.user(code, language, staticPromptContext),
             { customApiKey }
         );
 
@@ -49,6 +55,7 @@ class CodeAnalyzer {
                 success: false,
                 error: result.error,
                 analysisType: 'code-smell',
+                staticAnalysis: staticFacts,
             };
         }
 
@@ -63,6 +70,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'code-smell',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -227,9 +235,12 @@ class CodeAnalyzer {
     async fullReview(code: string, language: string, customApiKey?: string): Promise<CodeAnalysisResponse> {
         console.log(`📋 Performing full code review for ${language} code...`);
 
+        const staticFacts = staticAnalyzer.analyze(code, language);
+        const staticPromptContext = staticAnalyzer.formatForPrompt(staticFacts);
+
         const result = await groqService.sendPrompt(
             promptTemplates.codeReview.system,
-            promptTemplates.codeReview.user(code, language),
+            promptTemplates.codeReview.user(code, language, staticPromptContext),
             { customApiKey }
         );
 
@@ -238,6 +249,7 @@ class CodeAnalyzer {
                 success: false,
                 error: result.error,
                 analysisType: 'full-review',
+                staticAnalysis: staticFacts,
             };
         }
 
@@ -249,6 +261,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'full-review',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -370,6 +383,16 @@ class CodeAnalyzer {
                 return this.beforeAfterReview(code, language, customApiKey);
             case 'auto-fix' as any:
                 return this.autoFix(code, language, customApiKey);
+            case 'static-analysis':
+                const staticResult = staticAnalyzer.analyze(code, language);
+                return {
+                    success: true,
+                    data: staticResult,
+                    tokensUsed: 0,
+                    cost: 0,
+                    analysisType: 'static-analysis',
+                    staticAnalysis: staticResult,
+                };
             default:
                 return {
                     success: false,

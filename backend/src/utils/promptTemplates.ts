@@ -28,8 +28,8 @@ Respond ONLY with valid JSON:
   "summary": "string",
   "qualityScore": { "overall": number, "readability": number, "maintainability": number, "efficiency": number }
 }`,
-        user: (code: string, language: string) =>
-            `Review this ${language} code for code smells. Be specific about line numbers and explain WHY each issue matters:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+        user: (code: string, language: string, staticContext?: string) =>
+            `Review this ${language} code for code smells. Be specific about line numbers and explain WHY each issue matters:\n\n\`\`\`${language}\n${code}\n\`\`\`${staticContext ? `\n\n${staticContext}` : ''}`,
     },
 
     security: {
@@ -313,8 +313,8 @@ Respond ONLY with valid JSON:
   },
   "improvedCode": "string — full improved version"
 }`,
-        user: (code: string, language: string) =>
-            `Perform a comprehensive code review of this ${language} code. Be specific about line numbers, explain WHY each issue matters, and provide the improved version:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+        user: (code: string, language: string, staticContext?: string) =>
+            `Perform a comprehensive code review of this ${language} code. Be specific about line numbers, explain WHY each issue matters, and provide the improved version:\n\n\`\`\`${language}\n${code}\n\`\`\`${staticContext ? `\n\n${staticContext}` : ''}`,
     },
 
     explanation: {

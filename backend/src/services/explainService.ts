@@ -9,7 +9,7 @@ const groqExplain = new Groq({
     apiKey: process.env.GROQ_EXPLAIN_API_KEY || process.env.GROQ_API_KEY || '',
 });
 
-const EXPLAIN_MODEL = process.env.GROQ_EXPLAIN_MODEL || 'llama-3.1-8b-instant';
+const EXPLAIN_MODEL = process.env.GROQ_EXPLAIN_MODEL || 'openai/gpt-oss-120b';
 
 interface ExplainResult {
     success: boolean;
@@ -90,7 +90,7 @@ Please explain the relevant parts that answer the question.`;
                 } catch (sysErr: any) {
                     if (sysErr.status === 429 && process.env.BACKUP_GROQ_API_KEY) {
                         console.warn('⚠️ System Key Rate Limit (429), falling back to Backup Key in Explainer...');
-                        explanation = await execute(process.env.BACKUP_GROQ_API_KEY, process.env.BACKUP_GROQ_MODEL || 'llama-3.1-8b-instant');
+                        explanation = await execute(process.env.BACKUP_GROQ_API_KEY, process.env.BACKUP_GROQ_MODEL || 'openai/gpt-oss-20b');
                         console.log('✅ Groq Explain via Backup Key');
                     } else {
                         throw sysErr;
