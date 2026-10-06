@@ -37,10 +37,9 @@ function App() {
     const [currentPage, setCurrentPage] = useState<Page>(() => {
         const params = new URLSearchParams(window.location.search);
         const p = params.get('page');
-        if (p === 'landing' || p === 'login' || p === 'dashboard') return p as Page;
-        const rawToken = localStorage.getItem(TOKEN_KEY);
-        const rawUser = localStorage.getItem(USER_KEY);
-        return (rawToken && rawUser) ? 'dashboard' : 'landing';
+        if (p) return p as Page;
+        // Always default to landing page on root visit so animations and marketing are immediately visible
+        return 'landing';
     });
     const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);

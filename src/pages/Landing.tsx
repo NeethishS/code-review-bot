@@ -159,6 +159,36 @@ export default function Landing({ onGetStarted }: LandingProps) {
         return () => clearInterval(interval);
     }, []);
 
+    // Scrollytelling Animation Pipeline (translate-wf.com style sticky stage tracking)
+    const [scrollStage, setScrollStage] = useState<0 | 1 | 2>(0);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const scrollyContainerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!scrollyContainerRef.current) return;
+            const rect = scrollyContainerRef.current.getBoundingClientRect();
+            const totalScrollable = rect.height - window.innerHeight;
+            if (totalScrollable <= 0) return;
+
+            const scrolledInto = -rect.top;
+            const progress = Math.min(Math.max(scrolledInto / totalScrollable, 0), 1);
+            setScrollProgress(progress);
+
+            if (progress < 0.33) {
+                setScrollStage(0);
+            } else if (progress < 0.70) {
+                setScrollStage(1);
+            } else {
+                setScrollStage(2);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     // Automatic Live Auto-Fix Cycle (Auto-Demo Loop)
     useEffect(() => {
         if (!autoPlayEnabled) return;
@@ -259,8 +289,8 @@ export default function Landing({ onGetStarted }: LandingProps) {
                     </div>
 
                     <nav className="crb-nav-links">
-                        <a href="#features">Features</a>
                         <a href="#how-it-works">How it works</a>
+                        <a href="#features">Features</a>
                         <a href="#showcase">Diff Review</a>
                         <a href="#testimonials">Testimonials</a>
                     </nav>
@@ -633,6 +663,203 @@ export default function Landing({ onGetStarted }: LandingProps) {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SCROLLYTELLING PIPELINE SECTION (translate-wf.com style) */}
+            <section id="how-it-works" className="crb-scrolly-section" ref={scrollyContainerRef}>
+                <div className="crb-scrolly-sticky">
+                    <div className="crb-container crb-scrolly-inner">
+                        {/* Left Side: Dynamic Narrative & Progress HUD */}
+                        <div className="crb-scrolly-narrative">
+                            <div className="crb-eyebrow">
+                                <span className="crb-badge-pulse green"></span>
+                                SCROLL-DRIVEN PIPELINE
+                            </div>
+                            <h2 className="crb-scrolly-title">
+                                {scrollStage === 0 && (
+                                    <span className="animate-fade-in">
+                                        1. Deep AST &amp; Static Ingestion
+                                    </span>
+                                )}
+                                {scrollStage === 1 && (
+                                    <span className="animate-fade-in">
+                                        2. Real-Time Vulnerability Barrier
+                                    </span>
+                                )}
+                                {scrollStage === 2 && (
+                                    <span className="animate-fade-in">
+                                        3. Autonomous 1-Click Code Healing
+                                    </span>
+                                )}
+                            </h2>
+                            <p className="crb-scrolly-desc">
+                                {scrollStage === 0 && (
+                                    <span className="animate-fade-in">
+                                        As code enters the CI/CD pipeline, the parser deconstructs execution trees and traces tainted data sources across all imported functions in milliseconds.
+                                    </span>
+                                )}
+                                {scrollStage === 1 && (
+                                    <span className="animate-fade-in">
+                                        Our AI engine pins security breaches, OWASP Top 10 vulnerabilities, and hidden logic flaws before bad commits can ever reach production staging.
+                                    </span>
+                                )}
+                                {scrollStage === 2 && (
+                                    <span className="animate-fade-in">
+                                        Vulnerabilities are automatically resolved into verified patches with zero hallucinations, complete with test coverage assertions and syntax validation.
+                                    </span>
+                                )}
+                            </p>
+
+                            {/* translate-wf.com style Progress Stepper Indicator */}
+                            <div className="crb-scrolly-stepper">
+                                <div
+                                    className={`crb-step-item ${scrollStage === 0 ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setScrollStage(0);
+                                        if (scrollyContainerRef.current) {
+                                            const top = scrollyContainerRef.current.offsetTop;
+                                            window.scrollTo({ top, behavior: 'smooth' });
+                                        }
+                                    }}
+                                >
+                                    <div className="crb-step-num">01</div>
+                                    <div className="crb-step-text">
+                                        <strong>Parse &amp; Scan</strong>
+                                        <span>AST Tree Construction</span>
+                                    </div>
+                                </div>
+                                <div
+                                    className={`crb-step-item ${scrollStage === 1 ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setScrollStage(1);
+                                        if (scrollyContainerRef.current) {
+                                            const top = scrollyContainerRef.current.offsetTop + (scrollyContainerRef.current.offsetHeight * 0.45);
+                                            window.scrollTo({ top, behavior: 'smooth' });
+                                        }
+                                    }}
+                                >
+                                    <div className="crb-step-num">02</div>
+                                    <div className="crb-step-text">
+                                        <strong>Threat Barrier</strong>
+                                        <span>AI Security Scoring</span>
+                                    </div>
+                                </div>
+                                <div
+                                    className={`crb-step-item ${scrollStage === 2 ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setScrollStage(2);
+                                        if (scrollyContainerRef.current) {
+                                            const top = scrollyContainerRef.current.offsetTop + (scrollyContainerRef.current.offsetHeight * 0.85);
+                                            window.scrollTo({ top, behavior: 'smooth' });
+                                        }
+                                    }}
+                                >
+                                    <div className="crb-step-num">03</div>
+                                    <div className="crb-step-text">
+                                        <strong>Instant Fix</strong>
+                                        <span>Production-Ready Diff</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Overall Scroll Track Bar */}
+                            <div className="crb-scrolly-track">
+                                <div
+                                    className="crb-scrolly-progress-bar"
+                                    style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+                                ></div>
+                                <div className="crb-scrolly-progress-label">
+                                    Pipeline Scrub: <strong>{Math.round(scrollProgress * 100)}%</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Side: Morphing Visual Stage */}
+                        <div className="crb-scrolly-stage">
+                            {/* Stage 0: AST Scanner View */}
+                            <div className={`crb-stage-card stage-scan ${scrollStage === 0 ? 'visible' : ''}`}>
+                                <div className="crb-stage-badge">STAGE 01 • INGESTION</div>
+                                <div className="crb-scanner-beam-line"></div>
+                                <div className="crb-stage-header">
+                                    <span className="crb-stage-icon">⚡</span>
+                                    <strong>AST Graph &amp; Call Tree Ingested</strong>
+                                </div>
+                                <pre className="crb-stage-snippet">
+<code>{`// Ingesting payment_gateway.py
+import stripe
+stripe.api_key = "sk_live_94829384928" # ⚠️ Secret leak!
+
+def charge_customer(user_id, amount):
+    query = f"SELECT card FROM billing WHERE id='{user_id}'"
+    return db.execute(query)`}</code>
+                                </pre>
+                                <div className="crb-stage-footer-tags">
+                                    <span className="crb-tag blue">AST Nodes: 142</span>
+                                    <span className="crb-tag yellow">Taint Sources: 2</span>
+                                    <span className="crb-tag cyan">Engine: Groq LPUs</span>
+                                </div>
+                            </div>
+
+                            {/* Stage 1: Breaking Error Barrier */}
+                            <div className={`crb-stage-card stage-barrier ${scrollStage === 1 ? 'visible' : ''}`}>
+                                <div className="crb-stage-badge red-badge">STAGE 02 • THREAT BARRIER</div>
+                                <div className="crb-hazard-tape">
+                                    <span>⚠️ CRITICAL RISK DETECTED</span>
+                                    <span>•</span>
+                                    <span>CVSS 9.8</span>
+                                    <span>•</span>
+                                    <span>PR BLOCKED</span>
+                                </div>
+                                <div className="crb-threat-cards">
+                                    <div className="crb-threat-item">
+                                        <div className="crb-threat-dot red"></div>
+                                        <div className="crb-threat-info">
+                                            <strong>Hardcoded Secret (CWE-798)</strong>
+                                            <span>Production Stripe Secret Key leaked in source code</span>
+                                        </div>
+                                    </div>
+                                    <div className="crb-threat-item">
+                                        <div className="crb-threat-dot orange"></div>
+                                        <div className="crb-threat-info">
+                                            <strong>SQL Injection (CWE-89)</strong>
+                                            <span>Raw string formatting in SQL statement</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="crb-barrier-cta">
+                                    <span>🔒 Deployment safely halted until patched</span>
+                                </div>
+                            </div>
+
+                            {/* Stage 2: Clean Healed Code & Verified Patch */}
+                            <div className={`crb-stage-card stage-healed ${scrollStage === 2 ? 'visible' : ''}`}>
+                                <div className="crb-stage-badge green-badge">STAGE 03 • ZERO VULNERABILITIES</div>
+                                <div className="crb-healed-header">
+                                    <div className="crb-check-circle">✓</div>
+                                    <div>
+                                        <strong>Auto-Fix Applied Successfully</strong>
+                                        <span className="crb-healed-sub">All test suites passed • Verified by static &amp; LLM rules</span>
+                                    </div>
+                                </div>
+                                <pre className="crb-stage-snippet green-bg">
+<code>{`import os
+import stripe
+stripe.api_key = os.getenv("STRIPE_API_KEY")
+
+def charge_customer(user_id, amount):
+    # Parameterized query protects against SQL injection
+    query = "SELECT card FROM billing WHERE id = ?"
+    return db.execute(query, (user_id,))`}</code>
+                                </pre>
+                                <div className="crb-stage-footer-tags">
+                                    <span className="crb-tag green">Security: 100%</span>
+                                    <span className="crb-tag green">Verified Patch</span>
+                                    <span className="crb-tag blue">Ready to Merge</span>
                                 </div>
                             </div>
                         </div>
