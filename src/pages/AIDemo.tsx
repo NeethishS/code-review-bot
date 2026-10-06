@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import apiService, { type AnalysisResponse } from '../services/apiService';
 import learningService from '../services/learningService';
+import StaticFindingsView from '../components/StaticFindingsView';
 import './AIDemo.css';
 
 interface PreloadedCode {
@@ -1194,6 +1195,11 @@ function AIDemo({ preloadedCode, onPreloadConsumed }: AIDemoProps) {
                                     </span>
                                 )}
                             </div>
+
+                            {/* Verified deterministic static findings */}
+                            {result.staticAnalysis && (
+                                <StaticFindingsView staticAnalysis={result.staticAnalysis} />
+                            )}
 
                             {/* Human-readable output */}
                             <div className="result-human">

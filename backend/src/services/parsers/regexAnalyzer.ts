@@ -42,7 +42,18 @@ export class RegexAnalyzer {
                 });
             }
 
-            // 4. TODO / FIXME markers
+            // 4. Potentially dangerous OS / process execution calls
+            if (/\b(exec\s*\(|execSync\s*\(|spawn\s*\(|spawnSync\s*\(|os\s*\.\s*system\s*\()/.test(trimmed)) {
+                matches.push({
+                    type: 'unsafe-os-call',
+                    line: lineNum,
+                    snippet: trimmed.slice(0, 100),
+                    severity: 'high',
+                    message: 'Potential process or OS command execution detected; ensure arguments are strictly sanitized to prevent command injection.',
+                });
+            }
+
+            // 5. TODO / FIXME markers
             if (/\/\/\s*(TODO|FIXME|HACK|XXX)|\b#\s*(TODO|FIXME|HACK|XXX)/i.test(trimmed)) {
                 matches.push({
                     type: 'todo-marker',
@@ -53,7 +64,7 @@ export class RegexAnalyzer {
                 });
             }
 
-            // 5. TypeScript loose types
+            // 6. TypeScript loose types
             if (language.toLowerCase().includes('typescript') || language.toLowerCase() === 'ts') {
                 if (/:\s*any\b/.test(trimmed)) {
                     matches.push({

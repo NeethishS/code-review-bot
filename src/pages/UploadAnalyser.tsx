@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import apiService from '../services/apiService';
+import type { StaticAnalysisResult } from '../types';
+import StaticFindingsView from '../components/StaticFindingsView';
 import './UploadAnalyser.css';
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -25,6 +27,7 @@ interface FileEntry {
     result?: any;
     error?: string;
     tokensUsed?: number;
+    staticAnalysis?: StaticAnalysisResult;
 }
 
 function UploadAnalyser() {
@@ -117,6 +120,7 @@ function UploadAnalyser() {
                         status: 'done',
                         result: response.data,
                         tokensUsed: response.tokensUsed,
+                        staticAnalysis: response.staticAnalysis,
                     } : f));
                 } else {
                     setFiles(prev => prev.map(f => f.id === file.id ? {
@@ -152,6 +156,9 @@ function UploadAnalyser() {
 
         return (
             <div className="file-result">
+                {file.staticAnalysis && (
+                    <StaticFindingsView staticAnalysis={file.staticAnalysis} title={`Verified Static Findings: ${file.name}`} />
+                )}
                 {summary && <p className="result-summary">{typeof summary === 'string' ? summary.slice(0, 300) : ''}{summary.length > 300 ? '...' : ''}</p>}
                 {issues.length > 0 && (
                     <div className="result-issues">

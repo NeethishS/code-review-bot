@@ -4,6 +4,76 @@ import * as walk from 'acorn-walk';
 import { BaseParser, StaticAnalysisResult, FunctionMetric } from './baseParser';
 import { RegexAnalyzer } from './regexAnalyzer';
 
+function extractBindings(pattern: any): Array<{ name: string; line: number }> {
+    const bindings: Array<{ name: string; line: number }> = [];
+    if (!pattern) return bindings;
+
+    function walkPattern(p: any) {
+        if (!p) return;
+        if (p.type === 'Identifier') {
+            bindings.push({
+                name: p.name,
+                line: p.loc ? p.loc.start.line : 1,
+            });
+        } else if (p.type === 'AssignmentPattern') {
+            walkPattern(p.left);
+        } else if (p.type === 'RestElement') {
+            walkPattern(p.argument);
+        } else if (p.type === 'ObjectPattern') {
+            for (const prop of p.properties || []) {
+                if (prop.type === 'Property') {
+                    walkPattern(prop.value);
+                } else if (prop.type === 'RestElement') {
+                    walkPattern(prop.argument);
+                }
+            }
+        } else if (p.type === 'ArrayPattern') {
+            for (const elem of p.elements || []) {
+                if (elem) walkPattern(elem);
+            }
+        }
+    }
+
+    walkPattern(pattern);
+    return bindings;
+}
+
+function isReadInsidePattern(ancestors: any[], startIdx: number): boolean {
+    for (let i = startIdx; i < ancestors.length - 1; i++) {
+        const curr = ancestors[i];
+        const next = ancestors[i + 1];
+        if (curr.type === 'AssignmentPattern' && curr.right === next) {
+            return true;
+        }
+        if (curr.type === 'Property' && curr.computed && curr.key === next) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function isReadInsideLHS(ancestors: any[], startIdx: number): boolean {
+    for (let i = startIdx; i < ancestors.length - 1; i++) {
+        const curr = ancestors[i];
+        const next = ancestors[i + 1];
+        if (curr.type === 'MemberExpression') {
+            if (curr.computed && curr.property === next) {
+                return true;
+            }
+            if (curr.object === next) {
+                return true;
+            }
+        }
+        if (curr.type === 'Property' && curr.computed && curr.key === next) {
+            return true;
+        }
+        if (curr.type === 'AssignmentPattern' && curr.right === next) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export class JsTsParser implements BaseParser {
     parse(code: string, language: string): StaticAnalysisResult {
         const lines = code.split('\n');
@@ -24,6 +94,7 @@ export class JsTsParser implements BaseParser {
         });
 
         const declaredFunctions = new Map<string, { line: number; paramCount: number; isExported: boolean; node: any }>();
+        const declaredVariables = new Map<string, { line: number; isExported: boolean }>();
         const identifierReferences = new Map<string, number>();
         const unreachableCode: Array<{ line: number; reason: string }> = [];
         let cyclomaticComplexity = 1;
@@ -72,18 +143,120 @@ export class JsTsParser implements BaseParser {
                         declaredFunctions.set(name, { line, paramCount: node.params?.length || 0, isExported: !!isExported, node });
                     }
                 },
+                VariableDeclarator(node: any, ancestors: any[]) {
+                    // Arrow functions and function expressions are tracked as functions
+                    if (node.init && (node.init.type === 'ArrowFunctionExpression' || node.init.type === 'FunctionExpression')) {
+                        return;
+                    }
+
+                    const varDeclParent = ancestors[ancestors.length - 3];
+                    const isExported = !!(varDeclParent && (
+                        varDeclParent.type === 'ExportNamedDeclaration' ||
+                        varDeclParent.type === 'ExportDefaultDeclaration'
+                    ));
+
+                    const bindings = extractBindings(node.id);
+                    for (const binding of bindings) {
+                        if (!declaredVariables.has(binding.name)) {
+                            declaredVariables.set(binding.name, {
+                                line: binding.line,
+                                isExported,
+                            });
+                        }
+                    }
+                },
                 Identifier(node: any, ancestors: any[]) {
                     const name = node.name;
                     const parent = ancestors[ancestors.length - 2];
 
-                    // Don't count identifier when it's declaring the function itself
-                    if (parent && (parent.type === 'FunctionDeclaration' && parent.id === node)) {
-                        return;
-                    }
-                    if (parent && parent.type === 'VariableDeclarator' && parent.id === node) {
+                    // 1. Skip function/class declarations/expressions names
+                    if (parent && (
+                        (parent.type === 'FunctionDeclaration' && parent.id === node) ||
+                        (parent.type === 'FunctionExpression' && parent.id === node) ||
+                        (parent.type === 'ClassDeclaration' && parent.id === node) ||
+                        (parent.type === 'ClassExpression' && parent.id === node)
+                    )) {
                         return;
                     }
 
+                    // 2. Skip non-computed member expression property: obj.x
+                    if (parent && parent.type === 'MemberExpression' && parent.property === node && !parent.computed) {
+                        return;
+                    }
+
+                    // 3. Skip non-computed, non-shorthand object literal key: { x: 1 }
+                    if (parent && parent.type === 'Property' && parent.key === node && !parent.computed && !parent.shorthand) {
+                        return;
+                    }
+
+                    // 4. Skip class method / property definition keys
+                    if (parent && (parent.type === 'MethodDefinition' || parent.type === 'PropertyDefinition') && parent.key === node && !parent.computed) {
+                        return;
+                    }
+
+                    // 5. Skip import specifiers
+                    if (parent && (parent.type === 'ImportSpecifier' || parent.type === 'ImportDefaultSpecifier' || parent.type === 'ImportNamespaceSpecifier')) {
+                        return;
+                    }
+
+                    // 6. Skip label identifiers
+                    if (parent && (parent.type === 'LabeledStatement' || parent.type === 'BreakStatement' || parent.type === 'ContinueStatement') && parent.label === node) {
+                        return;
+                    }
+
+                    // 7. Skip catch clause parameter
+                    if (parent && parent.type === 'CatchClause' && parent.param === node) {
+                        return;
+                    }
+
+                    // 8. Check if identifier is inside a VariableDeclarator pattern (id) or function params
+                    let isDeclarationBinding = false;
+                    for (let i = ancestors.length - 2; i >= 0; i--) {
+                        const anc = ancestors[i];
+                        const next = ancestors[i + 1];
+
+                        if (anc.type === 'VariableDeclarator') {
+                            if (anc.id === next) {
+                                if (!isReadInsidePattern(ancestors, i + 1)) {
+                                    isDeclarationBinding = true;
+                                }
+                            }
+                            break;
+                        }
+
+                        if (anc.type === 'FunctionDeclaration' || anc.type === 'FunctionExpression' || anc.type === 'ArrowFunctionExpression') {
+                            if (Array.isArray(anc.params) && anc.params.includes(next)) {
+                                if (!isReadInsidePattern(ancestors, i + 1)) {
+                                    isDeclarationBinding = true;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if (isDeclarationBinding) {
+                        return;
+                    }
+
+                    // 9. Skip pure assignment target (LHS of simple assignment =)
+                    let isPureAssignmentWrite = false;
+                    for (let i = ancestors.length - 2; i >= 0; i--) {
+                        const anc = ancestors[i];
+                        const next = ancestors[i + 1];
+
+                        if (anc.type === 'AssignmentExpression' && anc.operator === '=') {
+                            if (anc.left === next) {
+                                if (!isReadInsideLHS(ancestors, i + 1)) {
+                                    isPureAssignmentWrite = true;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if (isPureAssignmentWrite) {
+                        return;
+                    }
+
+                    // Count as valid reference / read
                     identifierReferences.set(name, (identifierReferences.get(name) || 0) + 1);
                 },
                 IfStatement(node: any, ancestors: any[]) {
@@ -146,7 +319,7 @@ export class JsTsParser implements BaseParser {
 
         } catch (err: any) {
             // In case of syntax variance (e.g. raw JSX or untranspiled TS decorators), fallback gracefully to regex heuristics
-            this.fallbackRegexHeuristics(code, declaredFunctions, identifierReferences, unreachableCode);
+            this.fallbackRegexHeuristics(code, declaredFunctions, declaredVariables, identifierReferences, unreachableCode);
         }
 
         // Build cautious observations for potentially unused declarations
@@ -185,6 +358,24 @@ export class JsTsParser implements BaseParser {
             }
         });
 
+        declaredVariables.forEach((meta, name) => {
+            if (declaredFunctions.has(name)) {
+                return;
+            }
+            const refCount = identifierReferences.get(name) || 0;
+            if (refCount === 0) {
+                potentiallyUnusedDeclarations.push({
+                    name,
+                    type: 'variable',
+                    line: meta.line,
+                    isExported: meta.isExported,
+                    observation: meta.isExported
+                        ? `Exported variable '${name}' has no direct local references within this file (expected for public library/API utilities).`
+                        : `Variable '${name}' is declared but not referenced within this analyzed snippet. Verify whether it is read dynamically, exported, or used externally before removing.`,
+                });
+            }
+        });
+
         const patterns = RegexAnalyzer.analyzePatterns(code, language);
         const duplicateBlocks = RegexAnalyzer.findDuplicates(code);
 
@@ -210,6 +401,7 @@ export class JsTsParser implements BaseParser {
     private fallbackRegexHeuristics(
         code: string,
         declaredFunctions: Map<string, { line: number; paramCount: number; isExported: boolean; node: any }>,
+        declaredVariables: Map<string, { line: number; isExported: boolean }>,
         identifierReferences: Map<string, number>,
         unreachableCode: Array<{ line: number; reason: string }>
     ) {
@@ -222,6 +414,15 @@ export class JsTsParser implements BaseParser {
                 const name = funcMatch[1] || funcMatch[2];
                 const isExported = line.includes('export');
                 declaredFunctions.set(name, { line: lineNum, paramCount: 0, isExported, node: null });
+            } else {
+                const varMatch = line.match(/(?:const|let|var)\s+([a-zA-Z0-9_$]+)\b/);
+                if (varMatch) {
+                    const name = varMatch[1];
+                    const isExported = line.includes('export');
+                    if (!declaredVariables.has(name)) {
+                        declaredVariables.set(name, { line: lineNum, isExported });
+                    }
+                }
             }
 
             // Unreachable code heuristic
@@ -241,6 +442,14 @@ export class JsTsParser implements BaseParser {
             const regex = new RegExp(`\\b${name}\\b`, 'g');
             const matches = code.match(regex) || [];
             // If it appears only once, it's just the declaration
+            if (matches.length > 1) {
+                identifierReferences.set(name, matches.length - 1);
+            }
+        });
+
+        declaredVariables.forEach((_, name) => {
+            const regex = new RegExp(`\\b${name}\\b`, 'g');
+            const matches = code.match(regex) || [];
             if (matches.length > 1) {
                 identifierReferences.set(name, matches.length - 1);
             }

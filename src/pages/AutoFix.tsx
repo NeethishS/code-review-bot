@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import apiService from '../services/apiService';
+import type { StaticAnalysisResult } from '../types';
+import StaticFindingsView from '../components/StaticFindingsView';
 import './AutoFix.css';
 
 interface DiffLine {
@@ -82,6 +84,7 @@ export default function AutoFix() {
     const [error, setError] = useState('');
     const [viewMode, setViewMode] = useState<'diff' | 'side-by-side' | 'fixed'>('diff');
     const [applied, setApplied] = useState(false);
+    const [staticAnalysis, setStaticAnalysis] = useState<StaticAnalysisResult | undefined>(undefined);
 
     const handleAnalyze = async () => {
         if (!code.trim()) {
@@ -106,6 +109,7 @@ export default function AutoFix() {
                 data.fixedCode = cleanFixedCode(data.fixedCode);
                 setResult(data);
                 setDiff(generateDiff(data.originalCode, data.fixedCode));
+                setStaticAnalysis(response.staticAnalysis);
             } else {
                 setError(response.error || 'Failed to auto-fix code');
             }
@@ -292,6 +296,9 @@ export default function AutoFix() {
                             )}
 
                             {/* Issues & Fixes */}
+                            {staticAnalysis && (
+                                <StaticFindingsView staticAnalysis={staticAnalysis} title="Static Code Observations" />
+                            )}
                             <div className="autofix-summary">
                                 <div className="autofix-summary-section">
                                     <h4>🐛 Issues Found ({result.issues.length})</h4>

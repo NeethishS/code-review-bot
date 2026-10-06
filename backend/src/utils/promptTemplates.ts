@@ -59,8 +59,8 @@ Respond ONLY with valid JSON:
   "summary": "string",
   "riskScore": number
 }`,
-        user: (code: string, language: string) =>
-            `Perform a security audit of this ${language} code. Identify all vulnerabilities with exact line numbers and explain the attack vector:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+        user: (code: string, language: string, staticContext?: string) =>
+            `Perform a security audit of this ${language} code. Identify all vulnerabilities with exact line numbers and explain the attack vector:\n\n\`\`\`${language}\n${code}\n\`\`\`${staticContext ? `\n\n${staticContext}` : ''}`,
     },
 
     performance: {
@@ -332,8 +332,8 @@ IMPORTANT: You MUST respond ONLY with a single valid JSON object. Ensure all str
   "fixes": ["fix 1", "fix 2"],
   "explanation": "brief explanation of changes"
 }`,
-        user: (code: string, language: string) =>
-            `Fix this ${language} code. Address all bugs, improve quality, and follow best practices while maintaining original functionality:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+        user: (code: string, language: string, staticContext?: string) =>
+            `Fix this ${language} code. Address all bugs, improve quality, and follow best practices while maintaining original functionality:\n\n\`\`\`${language}\n${code}\n\`\`\`${staticContext ? `\n\n${staticContext}\n(Note for Auto-Fix: For any sensitive execution or OS/process calls such as exec or spawn, DO NOT automatically replace or remove the command execution. Instead preserve functionality, explain security risks, and recommend proper input validation or review in the issues/explanation fields.)` : ''}`,
     },
 };
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { StaticAnalysisResult } from '../types';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
 const API_BASE_URL = `${BACKEND_URL}/api`;
@@ -17,6 +18,7 @@ export interface AnalysisResponse {
     tokensUsed?: number;
     cost?: number;
     analysisType?: string;
+    staticAnalysis?: StaticAnalysisResult;
 }
 
 class ApiService {

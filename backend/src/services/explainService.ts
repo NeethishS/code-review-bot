@@ -2,6 +2,7 @@ import Groq from 'groq-sdk';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import vectorStore from './vectorStore';
+import staticAnalyzer, { StaticAnalysisResult } from './staticAnalyzer';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ interface ExplainResult {
     codeChunk?: string;
     source?: 'groq' | 'rapidapi-fallback';
     error?: string;
+    staticAnalysis?: StaticAnalysisResult;
 }
 
 class ExplainService {
@@ -41,6 +43,10 @@ class ExplainService {
 
         const topChunk = chunks[0];
 
+        // Run static analysis on the top relevant code chunk to provide verified facts to LLM
+        const staticFacts = staticAnalyzer.analyze(topChunk.content, topChunk.language);
+        const staticPromptContext = staticAnalyzer.formatForPrompt(staticFacts);
+
         const systemPrompt = `You are a code explanation assistant. You explain code clearly and concisely.
 When given a code snippet and a question, explain what the code does in plain English.
 Focus on: what it does, how it works, and any important patterns or potential issues.
@@ -51,7 +57,7 @@ Keep explanations under 300 words unless the code is complex.`;
 Relevant code context:
 \`\`\`${topChunk.language}
 ${context}
-\`\`\`
+\`\`\`${staticPromptContext ? `\n\n${staticPromptContext}` : ''}
 
 Please explain the relevant parts that answer the question.`;
 
@@ -105,10 +111,15 @@ Please explain the relevant parts that answer the question.`;
                 relevantLines: { start: topChunk.startLine, end: topChunk.endLine },
                 codeChunk: topChunk.content,
                 source: 'groq',
+                staticAnalysis: staticFacts,
             };
         } catch (groqError: any) {
             console.warn('⚠️ Groq explain failed, trying RapidAPI fallback:', groqError.message);
-            return this.rapidApiFallback(query, topChunk);
+            const fallbackRes = await this.rapidApiFallback(query, topChunk);
+            if (fallbackRes.success) {
+                fallbackRes.staticAnalysis = staticFacts;
+            }
+            return fallbackRes;
         }
     }
 

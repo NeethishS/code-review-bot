@@ -1,0 +1,178 @@
+.static-findings-container {
+    margin-bottom: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(18, 22, 34, 0.6);
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+}
+
+.static-findings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.static-findings-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.static-findings-badge-count {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    font-weight: 600;
+}
+
+.static-findings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.85rem 1.15rem;
+}
+
+.static-finding-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid #64748b;
+    transition: background 0.15s ease;
+}
+
+.static-finding-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.static-finding-item.severity-critical {
+    border-left-color: #ef4444;
+}
+
+.static-finding-item.severity-high {
+    border-left-color: #f97316;
+}
+
+.static-finding-item.severity-medium {
+    border-left-color: #eab308;
+}
+
+.static-finding-item.severity-low {
+    border-left-color: #3b82f6;
+}
+
+.static-finding-top {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+}
+
+.static-severity-badge {
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.static-severity-badge.critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.static-severity-badge.high {
+    background: rgba(249, 115, 22, 0.2);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.static-severity-badge.medium {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.static-severity-badge.low {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.static-finding-kind {
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.static-finding-line {
+    color: #94a3b8;
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-family: monospace;
+}
+
+.static-finding-msg {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+.static-finding-snippet {
+    margin-top: 0.2rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #e2e8f0;
+    font-family: monospace;
+    font-size: 0.75rem;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Compact Mode (for Code Explainer) */
+.static-findings-compact {
+    margin-top: 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.static-findings-compact summary {
+    cursor: pointer;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #a5b4fc;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+}
+
+.static-findings-compact summary:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.static-findings-compact-body {
+    padding: 0.6rem 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}

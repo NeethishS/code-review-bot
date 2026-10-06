@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const { groqService } = require('./dist/services/groqService');
-const { codeAnalyzer } = require('./dist/services/codeAnalyzer');
+const { codeAnalyzer, validateAutoFixSafety } = require('./dist/services/codeAnalyzer');
 const { explainService } = require('./dist/services/explainService');
 const pool = require('./dist/db/index').default;
 
@@ -158,7 +158,106 @@ async function runAllTests() {
             { customApiKey: process.env.BACKUP_GROQ_API_KEY, model: process.env.BACKUP_GROQ_MODEL }
         );
         if (!backupRes.success) throw new Error(backupRes.error || 'Backup key failed');
-        return `Backup key verified (${process.env.BACKUP_GROQ_MODELeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee})`;
+        return `Backup key verified (${process.env.BACKUP_GROQ_MODEL})`;
+    });
+
+    // 16. Cross-Feature Shared Static Findings
+    await check('Cross-Feature: Shared Static Findings Across All 4 Workflows', async () => {
+        const testCode = `const unusedVariable = 42;\nexec(userInput);`;
+
+        // 1. AI Code Analyser
+        const aiRes = await codeAnalyzer.scanSecurity(testCode, 'javascript');
+        if (!aiRes.success) throw new Error('AI Code Analyser scanSecurity failed');
+        const aiUnused = aiRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'unusedVariable' && d.type === 'variable');
+        const aiOsCall = aiRes.staticAnalysis?.patterns?.find(p => p.type === 'unsafe-os-call');
+        if (!aiUnused) throw new Error('AI Code Analyser missing unusedVariable static finding');
+        if (!aiOsCall) throw new Error('AI Code Analyser missing unsafe-os-call static finding');
+
+        // 2. Upload & Analyse flow (multi-file analysis)
+        const uploadRes = await codeAnalyzer.fullReview(testCode, 'javascript');
+        if (!uploadRes.success) throw new Error('Upload & Analyse fullReview failed');
+        const uploadUnused = uploadRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'unusedVariable' && d.type === 'variable');
+        const uploadOsCall = uploadRes.staticAnalysis?.patterns?.find(p => p.type === 'unsafe-os-call');
+        if (!uploadUnused || !uploadOsCall) throw new Error('Upload & Analyse missing static findings');
+
+        // 3. Code Explainer
+        const explainSession = 'test-explain-static-' + Date.now();
+        explainService.indexFiles(explainSession, [
+            { name: 'service.js', language: 'javascript', content: testCode }
+        ]);
+        const explainRes = await explainService.explain(explainSession, 'Explain this code');
+        if (!explainRes.success) throw new Error('Code Explainer failed');
+        const explainUnused = explainRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'unusedVariable' && d.type === 'variable');
+        const explainOsCall = explainRes.staticAnalysis?.patterns?.find(p => p.type === 'unsafe-os-call');
+        if (!explainUnused || !explainOsCall) throw new Error('Code Explainer missing static findings');
+
+        // 4. Auto-Fix
+        const autoFixRes = await codeAnalyzer.autoFix(testCode, 'javascript');
+        if (!autoFixRes.success) throw new Error('Auto-Fix failed');
+        const autoFixUnused = autoFixRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'unusedVariable' && d.type === 'variable');
+        const autoFixOsCall = autoFixRes.staticAnalysis?.patterns?.find(p => p.type === 'unsafe-os-call');
+        if (!autoFixUnused || !autoFixOsCall) throw new Error('Auto-Fix missing static findings');
+
+        // Verify negative cases
+        const usedCode = `const used = 10;\nconsole.log(used);`;
+        const usedRes = await codeAnalyzer.fullReview(usedCode, 'javascript');
+        const falselyReportedUsed = usedRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'used');
+        if (falselyReportedUsed) throw new Error('Variable "used" incorrectly flagged as unused');
+
+        const computedCode = `const key = "name";\nconst val = obj[key];`;
+        const computedRes = await codeAnalyzer.fullReview(computedCode, 'javascript');
+        const falselyReportedKey = computedRes.staticAnalysis?.potentiallyUnusedDeclarations?.find(d => d.name === 'key');
+        if (falselyReportedKey) throw new Error('Computed key "key" incorrectly flagged as unused');
+
+        return 'Verified consistent findings across AI Analyser, Upload & Analyse, Code Explainer, and Auto-Fix';
+    });
+
+    // 17. Auto-Fix Deterministic Safety Safeguard (Sensitive OS/Process Calls)
+    await check('Feature: Auto-Fix Safety Safeguard (OS/Process Calls)', async () => {
+        // Test 1: Original contains exec(), generated fix removes exec() => rejected/warned
+        const res1 = validateAutoFixSafety('exec(userInput);', '// safe alternative without exec', 'javascript');
+        if (res1.safe !== false) throw new Error('Test 1 failed: Expected removal of exec() to be rejected');
+        if (!res1.reason || !res1.reason.includes('remove')) throw new Error('Test 1 failed: Expected rejection reason to mention removal');
+
+        // Test 2: Original contains spawn(), generated fix removes spawn() => rejected/warned
+        const res2 = validateAutoFixSafety('spawn("node", args);', 'console.log("no spawn");', 'javascript');
+        if (res2.safe !== false) throw new Error('Test 2 failed: Expected removal of spawn() to be rejected');
+        if (!res2.reason || !res2.reason.includes('remove')) throw new Error('Test 2 failed: Expected rejection reason to mention removal');
+
+        // Test 3: Original contains exec(), generated fix changes to spawn() => rejected/warned
+        const res3 = validateAutoFixSafety('exec(userInput);', 'spawn("node", [userInput]);', 'javascript');
+        if (res3.safe !== false) throw new Error('Test 3 failed: Expected changing exec to spawn to be rejected');
+        if (!res3.reason || !res3.reason.includes('modify')) throw new Error('Test 3 failed: Expected rejection reason to mention modification');
+
+        // Test 4: Original contains exec(), generated fix preserves exec() => allowed
+        const res4 = validateAutoFixSafety(
+            'exec(userInput);',
+            'const sanitized = sanitize(userInput);\nexec(sanitized);',
+            'javascript'
+        );
+        if (res4.safe !== true) throw new Error(`Test 4 failed: Expected preserving exec() to be allowed, got: ${res4.reason}`);
+
+        // Test 5: Original contains exec(), generated fix changes surrounding formatting only => allowed
+        const res5 = validateAutoFixSafety(
+            'function run() {\n    exec(userInput);\n}',
+            'function run() {\n  exec(userInput);\n}',
+            'javascript'
+        );
+        if (res5.safe !== true) throw new Error(`Test 5 failed: Expected formatting-only fix to be allowed, got: ${res5.reason}`);
+
+        // Test 6: Original contains no unsafe-os-call => allowed (normal behavior)
+        const res6 = validateAutoFixSafety(
+            'const total = price * quantity;',
+            'const total = Math.round(price * quantity * 100) / 100;',
+            'javascript'
+        );
+        if (res6.safe !== true) throw new Error(`Test 6 failed: Expected normal code fix to be allowed, got: ${res6.reason}`);
+
+        // Test 7: Original has no unsafe-os-call, fix introduces new exec() => rejected
+        const res7 = validateAutoFixSafety('const x = 10;', 'exec("whoami");', 'javascript');
+        if (res7.safe !== false) throw new Error('Test 7 failed: Expected introduction of new exec() to be rejected');
+
+        return 'Verified Auto-Fix deterministic safeguard (remove, change, preserve, format, and normal cases)';
     });
 
     console.log('\n====================================================');

@@ -21,6 +21,91 @@ export interface CodeAnalysisResponse {
     staticAnalysis?: StaticAnalysisResult;
 }
 
+export interface AutoFixSafetyResult {
+    safe: boolean;
+    reason?: string;
+}
+
+/**
+ * Deterministically extract sensitive OS/process execution calls from verified static analysis patterns.
+ */
+function extractSensitiveCalls(code: string, patterns: Array<{ type: string; line: number; snippet: string }>): string[] {
+    const osPatterns = patterns.filter(p => p.type === 'unsafe-os-call');
+    if (osPatterns.length === 0) return [];
+
+    const lines = code.split('\n');
+    const calls: string[] = [];
+
+    for (const p of osPatterns) {
+        const lineContent = lines[p.line - 1] || p.snippet;
+        const regex = /\b(execSync|spawnSync|os\s*\.\s*system|exec|spawn)\s*\(/g;
+        let match: RegExpExecArray | null;
+        let foundInLine = false;
+
+        while ((match = regex.exec(lineContent)) !== null) {
+            calls.push(match[1].replace(/\s+/g, ''));
+            foundInLine = true;
+        }
+
+        if (!foundInLine) {
+            while ((match = regex.exec(p.snippet)) !== null) {
+                calls.push(match[1].replace(/\s+/g, ''));
+            }
+        }
+    }
+
+    return calls.sort();
+}
+
+/**
+ * Validates whether an LLM-generated fixedCode safely preserves sensitive OS/process calls.
+ * If original code contains unsafe-os-call patterns and fixedCode removes or alters them,
+ * the fix is rejected as unsafe and the original code is preserved.
+ */
+export function validateAutoFixSafety(
+    originalCode: string,
+    fixedCode: string,
+    language: string
+): AutoFixSafetyResult {
+    const origAnalysis = staticAnalyzer.analyze(originalCode, language);
+    const fixedAnalysis = staticAnalyzer.analyze(fixedCode, language);
+
+    const origCalls = extractSensitiveCalls(originalCode, origAnalysis.patterns);
+    const fixedCalls = extractSensitiveCalls(fixedCode, fixedAnalysis.patterns);
+
+    // Case 1: Original code had no sensitive OS/process calls
+    if (origCalls.length === 0) {
+        if (fixedCalls.length > 0) {
+            return {
+                safe: false,
+                reason: `Automated fix introduced sensitive OS/process execution call (${fixedCalls.map(c => `'${c}'`).join(', ')}) not present in the original code.`,
+            };
+        }
+        return { safe: true };
+    }
+
+    // Case 2: Original code had sensitive OS calls, but the fix removed all of them
+    if (fixedCalls.length === 0) {
+        return {
+            safe: false,
+            reason: `Automated fix attempted to remove sensitive OS/process execution call (${origCalls.map(c => `'${c}'`).join(', ')}). Sensitive process calls must not be automatically deleted.`,
+        };
+    }
+
+    // Case 3: Check if calls match exactly (same functions and counts)
+    const callsMatch = origCalls.length === fixedCalls.length &&
+        origCalls.every((val, idx) => val === fixedCalls[idx]);
+
+    if (!callsMatch) {
+        return {
+            safe: false,
+            reason: `Automated fix attempted to modify sensitive OS/process execution call(s) (original: [${origCalls.join(', ')}], fixed: [${fixedCalls.join(', ')}]). Sensitive process APIs must not be altered automatically.`,
+        };
+    }
+
+    return { safe: true };
+}
+
 class CodeAnalyzer {
     /**
      * Analyze code for smells and anti-patterns
@@ -80,9 +165,12 @@ class CodeAnalyzer {
     async scanSecurity(code: string, language: string, customApiKey?: string): Promise<CodeAnalysisResponse> {
         console.log(`🔒 Scanning for security vulnerabilities in ${language} code...`);
 
+        const staticFacts = staticAnalyzer.analyze(code, language);
+        const staticPromptContext = staticAnalyzer.formatForPrompt(staticFacts);
+
         const result = await groqService.sendPrompt(
             promptTemplates.security.system,
-            promptTemplates.security.user(code, language),
+            promptTemplates.security.user(code, language, staticPromptContext),
             { customApiKey }
         );
 
@@ -91,6 +179,7 @@ class CodeAnalyzer {
                 success: false,
                 error: result.error,
                 analysisType: 'security',
+                staticAnalysis: staticFacts,
             };
         }
 
@@ -102,6 +191,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'security',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -126,6 +216,7 @@ class CodeAnalyzer {
         }
 
         const parsedData = groqService.parseJsonResponse(result.data) || { _raw: result.data, summary: result.data };
+        const staticFacts = staticAnalyzer.analyze(code, language);
 
         return {
             success: true,
@@ -133,6 +224,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'performance',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -148,11 +240,14 @@ class CodeAnalyzer {
             { customApiKey }
         );
 
+        const staticFacts = staticAnalyzer.analyze(code, language);
+
         if (!result.success) {
             return {
                 success: false,
                 error: result.error,
                 analysisType: 'complexity',
+                staticAnalysis: staticFacts,
             };
         }
 
@@ -164,6 +259,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'complexity',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -179,11 +275,14 @@ class CodeAnalyzer {
             { customApiKey }
         );
 
+        const staticFacts = staticAnalyzer.analyze(code, language);
+
         if (!result.success) {
             return {
                 success: false,
                 error: result.error,
                 analysisType: 'duplicates',
+                staticAnalysis: staticFacts,
             };
         }
 
@@ -195,6 +294,7 @@ class CodeAnalyzer {
             tokensUsed: result.tokensUsed,
             cost: result.cost,
             analysisType: 'duplicates',
+            staticAnalysis: staticFacts,
         };
     }
 
@@ -420,23 +520,57 @@ class CodeAnalyzer {
      */
     async autoFix(code: string, language: string, customApiKey?: string): Promise<CodeAnalysisResponse> {
         console.log(`🔧 Auto-fixing ${language} code...`);
+
+        const staticFacts = staticAnalyzer.analyze(code, language);
+        const staticPromptContext = staticAnalyzer.formatForPrompt(staticFacts);
+
         const result = await groqService.sendPrompt(
             promptTemplates.autoFix.system,
-            promptTemplates.autoFix.user(code, language),
+            promptTemplates.autoFix.user(code, language, staticPromptContext),
             { customApiKey }
         );
 
-        if (!result.success) return { success: false, error: result.error, analysisType: 'auto-fix' };
+        if (!result.success) {
+            return {
+                success: false,
+                error: result.error,
+                analysisType: 'auto-fix',
+                staticAnalysis: staticFacts,
+            };
+        }
 
         const parsedData = this.parseAutoFixResult(result.data, code);
+
+        // Deterministic Safeguard: Verify that LLM fixedCode did not remove or modify sensitive OS/process calls
+        const safety = validateAutoFixSafety(code, parsedData.fixedCode, language);
+        if (!safety.safe) {
+            console.warn(`🛡️ Auto-Fix Safety Safeguard Triggered: ${safety.reason}`);
+            parsedData.fixedCode = code; // Preserve original code
+            parsedData.issues = [
+                `⚠️ Safety Warning: ${safety.reason}`,
+                ...parsedData.issues,
+            ];
+            parsedData.fixes = [
+                'Preserved sensitive OS/process call without automatic modification (manual review required).',
+            ];
+            parsedData.explanation = `Automatic transformation rejected for safety: ${safety.reason} The original code has been preserved so you can inspect and validate the process execution arguments manually.`;
+        }
 
         return { 
             success: true, 
             data: parsedData, 
             tokensUsed: result.tokensUsed, 
             cost: result.cost, 
-            analysisType: 'auto-fix' 
+            analysisType: 'auto-fix',
+            staticAnalysis: staticFacts,
         };
+    }
+
+    /**
+     * Validate whether an auto-fix safely preserves sensitive OS/process calls
+     */
+    validateAutoFixSafety(originalCode: string, fixedCode: string, language: string): AutoFixSafetyResult {
+        return validateAutoFixSafety(originalCode, fixedCode, language);
     }
 
     /**

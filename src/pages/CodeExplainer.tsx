@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import apiService from '../services/apiService';
+import type { StaticAnalysisResult } from '../types';
+import StaticFindingsView from '../components/StaticFindingsView';
 import './CodeExplainer.css';
 
 interface ChatMessage {
@@ -10,6 +12,7 @@ interface ChatMessage {
     codeChunk?: string;
     source?: string;
     timestamp: Date;
+    staticAnalysis?: StaticAnalysisResult;
 }
 
 interface IndexedFile {
@@ -162,6 +165,7 @@ export default function CodeExplainer({ preloadedCode, onPreloadConsumed }: { pr
                 codeChunk: result.codeChunk,
                 source: result.source,
                 timestamp: new Date(),
+                staticAnalysis: result.staticAnalysis,
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
@@ -284,6 +288,10 @@ export default function CodeExplainer({ preloadedCode, onPreloadConsumed }: { pr
                                             <pre className="explainer-code-chunk"><code>{msg.codeChunk}</code></pre>
                                         )}
                                     </div>
+                                )}
+
+                                {msg.staticAnalysis && (
+                                    <StaticFindingsView staticAnalysis={msg.staticAnalysis} compact={true} />
                                 )}
                             </div>
                             <span className="explainer-message-time">{formatTime(msg.timestamp)}</span>
