@@ -12,7 +12,6 @@ interface SidebarProps {
 
 function Sidebar({ currentPage, onNavigate, isOpen, onClose, authUser }: SidebarProps) {
     const menuItems = [
-        { id: 'landing' as Page, label: 'Landing Page', icon: '🚀' },
         { id: 'dashboard' as Page, label: 'Dashboard', icon: '📊' },
         { id: 'history' as Page, label: 'Review History', icon: '📜' },
         { id: 'repositories' as Page, label: 'Repositories', icon: '📁' },
