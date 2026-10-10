@@ -12,7 +12,7 @@ function AutomatePRs() {
     const [copiedUrl, setCopiedUrl] = useState(false);
     const [copiedSecret, setCopiedSecret] = useState(false);
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    const backendUrl = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001').trim().replace(/\/+$/, '');
 
     useEffect(() => {
         fetchConfig();

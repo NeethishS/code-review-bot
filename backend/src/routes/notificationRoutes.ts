@@ -4,11 +4,12 @@ import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-// GET all notifications
+// GET all notifications for authenticated user
 router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50'
+            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
+            [req.userId]
         );
         res.json({ success: true, data: result.rows });
     } catch (err: any) {
@@ -34,10 +35,13 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     }
 });
 
-// PATCH mark all as read — must be BEFORE /:id/read to avoid route conflict
+// PATCH mark all as read for authenticated user
 router.patch('/read-all', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
-        await pool.query('UPDATE notifications SET read = true WHERE read = false');
+        await pool.query(
+            'UPDATE notifications SET read = true WHERE user_id = $1 AND read = false',
+            [req.userId]
+        );
         res.json({ success: true, message: 'All notifications marked as read' });
     } catch (err: any) {
         res.status(500).json({ success: false, error: err.message });
