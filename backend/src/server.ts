@@ -65,6 +65,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/explain', explainRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // Root endpoint

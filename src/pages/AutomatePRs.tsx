@@ -20,8 +20,18 @@ function AutomatePRs() {
 
     const fetchConfig = async () => {
         try {
-            const res = await apiService.get('/auth/webhook-config');
-            if (res.success) {
+            let res = await apiService.get('/auth/webhook-config');
+            if (!res?.success) {
+                // Fallback to direct /auth route (if server only mounted on /auth)
+                const token = localStorage.getItem('crb_token');
+                const raw = await fetch(`${backendUrl}/auth/webhook-config`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (raw.ok) {
+                    res = await raw.json();
+                }
+            }
+            if (res?.success) {
                 setSecret(res.secret);
                 setWebhookUrl(`${backendUrl}/api/webhooks/github/${res.secret}`);
             }
@@ -36,8 +46,18 @@ function AutomatePRs() {
         if (!window.confirm('Are you sure? Old webhooks will stop working immediately.')) return;
         setRegenerating(true);
         try {
-            const res = await apiService.post('/auth/regenerate-webhook-secret', {});
-            if (res.success) {
+            let res = await apiService.post('/auth/regenerate-webhook-secret', {});
+            if (!res?.success) {
+                const token = localStorage.getItem('crb_token');
+                const raw = await fetch(`${backendUrl}/auth/regenerate-webhook-secret`, {
+                    method: 'POST',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (raw.ok) {
+                    res = await raw.json();
+                }
+            }
+            if (res?.success) {
                 setSecret(res.secret);
                 setWebhookUrl(`${backendUrl}/api/webhooks/github/${res.secret}`);
             }
